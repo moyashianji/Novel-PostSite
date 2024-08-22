@@ -14,8 +14,20 @@ const userSchema = new mongoose.Schema({
   otherLink: { type: String, default: '' },
 
   likedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }], // 追加: いいねした投稿のIDを保存
+  
+  followerCount: { type: Number, default: 0 },
 
-  followerCount: { type: Number, default: 0 }
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // フォロワーのリスト
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // フォローしているユーザーのリスト
+
+  bookmarks: [
+    {
+      novelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' },
+      position: Number,
+      date: { type: Date, default: Date.now },
+    },
+  ],
+  bookShelf: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }], // 本棚に追加されたポスト
 
 }, { timestamps: true });
 

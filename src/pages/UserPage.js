@@ -5,13 +5,18 @@ import { styled } from '@mui/system';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import WebIcon from '@mui/icons-material/Web';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 
 const UserCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(4),
   padding: theme.spacing(4),
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
+  justifyContent: 'space-between', // フォローボタンを右側に配置
+  backgroundColor: theme.palette.background.paper,
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+  borderRadius: theme.shape.borderRadius,
 }));
 
 const WorkCard = styled(Card)(({ theme }) => ({
@@ -22,6 +27,11 @@ const WorkCard = styled(Card)(({ theme }) => ({
   textAlign: 'left',
   backgroundColor: theme.palette.background.default,
   padding: theme.spacing(2),
+  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+  transition: 'transform 0.2s',
+  '&:hover': {
+    transform: 'scale(1.02)',
+  },
 }));
 
 const WorkCardContent = styled(CardContent)(({ theme }) => ({
@@ -42,30 +52,29 @@ const truncateTitle = (title, maxLength) => {
   return title.length > maxLength ? `${title.slice(0, maxLength)}...` : title;
 };
 
-const UserPage = ({ auth }) => {
+const UserPage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [works, setWorks] = useState([]);
   const [filteredWorks, setFilteredWorks] = useState([]);
   const [selectedTag, setSelectedTag] = useState('');
   const [isFollowing, setIsFollowing] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserData = async () => {
       try {
         const response = await fetch(`http://localhost:5000/api/users/${id}`);
         const data = await response.json();
         setUser(data);
 
-        // フォローしているかどうか確認
-        if (auth) {
-          const followResponse = await fetch(`http://localhost:5000/api/users/me/following/${id}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-          });
-          const followData = await followResponse.json();
-          setIsFollowing(followData.isFollowing);
-        }
+        const followStatusResponse = await fetch(`http://localhost:5000/api/users/${id}/is-following`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        const followStatus = await followStatusResponse.json();
+        setIsFollowing(followStatus.isFollowing);
       } catch (error) {
         console.error('Error fetching user:', error);
       }
@@ -76,37 +85,42 @@ const UserPage = ({ auth }) => {
         const response = await fetch(`http://localhost:5000/api/users/${id}/works`);
         const data = await response.json();
         setWorks(data);
-        setFilteredWorks(data); // 初期表示は全ての作品
+        setFilteredWorks(data);
       } catch (error) {
         console.error('Error fetching works:', error);
       }
     };
 
-    fetchUser();
+    fetchUserData();
     fetchWorks();
-  }, [id, auth]);
+  }, [id]);
 
   const handleTagClick = (event, tag) => {
     if (event && event.stopPropagation) {
-      event.stopPropagation(); // カードのリンクにイベントが伝播しないようにする
+      event.stopPropagation();
     }
     setSelectedTag(tag);
     if (tag) {
-      setFilteredWorks(works.filter(work => work.tags.includes(tag)));
+      setFilteredWorks(works.filter((work) => work.tags.includes(tag)));
     } else {
-      setFilteredWorks(works); // タグが選択されていない場合、全ての作品を表示
+      setFilteredWorks(works);
     }
   };
 
-  const handleFollow = async () => {
-    if (!auth) {
+  const handleFollowToggle = async () => {
+    if (!localStorage.getItem('token')) {
       navigate('/login');
       return;
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${isFollowing ? 'unfollow' : 'follow'}/${id}`, {
-        method: isFollowing ? 'DELETE' : 'POST',
+      const url = isFollowing
+        ? `http://localhost:5000/api/users/unfollow/${id}`
+        : `http://localhost:5000/api/users/follow/${id}`;
+      const method = isFollowing ? 'DELETE' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -118,9 +132,11 @@ const UserPage = ({ auth }) => {
           ...prevUser,
           followerCount: prevUser.followerCount + (isFollowing ? -1 : 1),
         }));
+      } else {
+        console.error('Error toggling follow status:', await response.json());
       }
     } catch (error) {
-      console.error('Error following/unfollowing user:', error);
+      console.error('Error toggling follow status:', error);
     }
   };
 
@@ -132,19 +148,18 @@ const UserPage = ({ auth }) => {
         <Box display="flex" alignItems="center">
           <Avatar src={`http://localhost:5000${user.icon}`} alt={user.nickname} sx={{ width: 100, height: 100, marginRight: 2 }} />
           <Box>
-            <Typography variant="h4">{user.nickname}</Typography>
-            <Typography variant="body1" color="textSecondary">
+            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{user.nickname}</Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
               {user.description}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              フォロワー数: {user.followerCount}
-            </Typography>
+            <Typography variant="body2">フォロワー数: {user.followerCount}</Typography>
           </Box>
         </Box>
         <Button
-          variant="contained"
-          color={isFollowing ? 'secondary' : 'primary'}
-          onClick={handleFollow}
+          variant={isFollowing ? 'contained' : 'outlined'}
+          color="primary"
+          onClick={handleFollowToggle}
+          startIcon={isFollowing ? <PersonRemoveIcon /> : <PersonAddIcon />}
         >
           {isFollowing ? 'フォロー解除' : 'フォロー'}
         </Button>
@@ -159,7 +174,7 @@ const UserPage = ({ auth }) => {
         </Box>
       )}
 
-      <Typography variant="h5" sx={{ mb: 2 }}>作品一覧</Typography>
+      <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>作品一覧</Typography>
       <Grid container spacing={2}>
         {filteredWorks.map((work, index) => (
           <Grid item xs={12} sm={4} key={index}>

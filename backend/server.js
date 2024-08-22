@@ -74,61 +74,199 @@ const viewTracking = new Map(); // ユーザーごとに閲覧を追跡
     console.error('Error initializing viewCounter:', error);
   }
 })();
+// 本棚追加エンドポイント
+// 本棚追加/削除エンドポイント
+// server.js
+// 本棚トグルのエンドポイント
+// server.js
 
-// ユーザーのフォロー確認
-app.get('/api/users/me/following/:id', authenticateToken, async (req, res) => {
+// 本棚トグルのエンドポイント
+// 本棚に追加するエンドポイント
+// 本棚に追加するエンドポイント
+// 本棚登録・解除のエンドポイント
+app.post('/api/posts/:id/bookshelf', authenticateToken, async (req, res) => {
   try {
-    const isFollowing = await Follow.exists({ follower: req.user._id, following: req.params.id });
-    res.json({ isFollowing: !!isFollowing });
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: '投稿が見つかりません。' });
+    }
+
+    const existingBookshelf = await User.findOne({ _id: req.user._id, bookShelf: post._id });
+    let updatedBookshelfCounter;
+
+    if (existingBookshelf) {
+      // 本棚から削除
+      await User.findByIdAndUpdate(req.user._id, { $pull: { bookShelf: post._id } });
+      updatedBookshelfCounter = post.bookShelfCounter > 0 ? post.bookShelfCounter - 1 : 0;
+      await Post.findByIdAndUpdate(req.params.id, { bookShelfCounter: updatedBookshelfCounter });
+    } else {
+      // 本棚に追加
+      await User.findByIdAndUpdate(req.user._id, { $addToSet: { bookShelf: post._id } });
+      updatedBookshelfCounter = post.bookShelfCounter + 1;
+      await Post.findByIdAndUpdate(req.params.id, { bookShelfCounter: updatedBookshelfCounter });
+    }
+
+    res.json({ bookshelfCounter: updatedBookshelfCounter, isInBookshelf: !existingBookshelf });
   } catch (error) {
-    res.status(500).json({ message: 'フォロー状態の取得に失敗しました。' });
+    console.error('Error toggling bookshelf:', error);
+    res.status(500).json({ message: '本棚登録のトグルに失敗しました。', error });
   }
 });
 
-// フォローする
+// 本棚登録状態の確認エンドポイント
+app.get('/api/posts/:id/isInBookshelf', authenticateToken, async (req, res) => {
+  try {
+    const existingBookshelf = await User.findOne({ _id: req.user._id, bookShelf: req.params.id });
+    res.json({ isInBookshelf: !!existingBookshelf });
+  } catch (error) {
+    console.error('Error checking bookshelf status:', error);
+    res.status(500).json({ message: '本棚登録状態の確認に失敗しました。', error });
+  }
+});
+
+// Bookmarkを保存または更新するためのエンドポイント
+app.post('/api/users/bookmark', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id; // 認証されたユーザーのID
+    const { novelId, position } = req.body;
+
+    // ユーザーを取得
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりませんでした。' });
+    }
+
+    // 既存のしおりを検索
+    const existingBookmark = user.bookmarks.find(bookmark => bookmark.novelId.toString() === novelId);
+
+    if (existingBookmark) {
+      // 既存のしおりを更新
+      existingBookmark.position = position;
+      existingBookmark.date = new Date();
+    } else {
+      // 新しいしおりを追加
+      user.bookmarks.push({
+        novelId,
+        position,
+        date: new Date(),
+      });
+    }
+
+    // ユーザーを保存
+    await user.save();
+
+    res.status(200).json({ message: 'しおりが保存されました。' });
+  } catch (error) {
+    console.error('しおりの保存中にエラーが発生しました:', error);
+    res.status(500).json({ message: 'しおりの保存に失敗しました。' });
+  }
+});
+// フォロー機能の追加
+// server.js 例
+
+// ユーザーをフォローするエンドポイント
 app.post('/api/users/follow/:id', authenticateToken, async (req, res) => {
   try {
-    const follow = new Follow({
-      follower: req.user._id,
-      following: req.params.id,
-    });
-    await follow.save();
+    const followerId = req.user._id;
+    const followeeId = req.params.id;
 
-    await User.findByIdAndUpdate(req.params.id, { $inc: { followerCount: 1 } });
+    if (followerId.toString() === followeeId) {
+      return res.status(400).json({ message: "自分自身をフォローすることはできません。" });
+    }
 
-    res.status(200).json({ message: 'フォローしました。' });
+    const followee = await User.findById(followeeId);
+    const follower = await User.findById(followerId);
+
+    if (!followee || !follower) {
+      return res.status(404).json({ message: "ユーザーが見つかりません。" });
+    }
+
+    // フォロワーがすでにフォローしていない場合のみ追加
+    if (!followee.followers.includes(followerId)) {
+      followee.followers.push(followerId);
+      await followee.save();
+    }
+
+    // フォローしているユーザーリストに追加
+    if (!follower.following.includes(followeeId)) {
+      follower.following.push(followeeId);
+      await follower.save();
+    }
+
+    res.status(200).json({ message: "フォローしました。" });
   } catch (error) {
-    res.status(500).json({ message: 'フォローに失敗しました。' });
+    console.error('Error following user:', error);
+    res.status(500).json({ message: "フォローに失敗しました。" });
   }
 });
 
-// フォロー解除する
+// ユーザーのフォローを解除するエンドポイント
 app.delete('/api/users/unfollow/:id', authenticateToken, async (req, res) => {
   try {
-    await Follow.findOneAndDelete({ follower: req.user._id, following: req.params.id });
+    const followerId = req.user._id;
+    const followeeId = req.params.id;
 
-    await User.findByIdAndUpdate(req.params.id, { $inc: { followerCount: -1 } });
+    const followee = await User.findById(followeeId);
+    const follower = await User.findById(followerId);
 
-    res.status(200).json({ message: 'フォロー解除しました。' });
+    if (!followee || !follower) {
+      return res.status(404).json({ message: "ユーザーが見つかりません。" });
+    }
+
+    // フォロワーリストから削除
+    followee.followers = followee.followers.filter(
+      (id) => id.toString() !== followerId.toString()
+    );
+    await followee.save();
+
+    // フォローリストから削除
+    follower.following = follower.following.filter(
+      (id) => id.toString() !== followeeId.toString()
+    );
+    await follower.save();
+
+    res.status(200).json({ message: "フォローを解除しました。" });
   } catch (error) {
-    res.status(500).json({ message: 'フォロー解除に失敗しました。' });
+    console.error('Error unfollowing user:', error);
+    res.status(500).json({ message: "フォロー解除に失敗しました。" });
   }
 });
+
+// フォローステータスを確認するエンドポイント
+app.get('/api/users/:id/is-following', authenticateToken, async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    const targetUserId = req.params.id;
+
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+      return res.status(404).json({ message: 'ユーザーが見つかりません。' });
+    }
+
+    const isFollowing = currentUser.following.includes(targetUserId);
+
+    res.status(200).json({ isFollowing });
+  } catch (error) {
+    console.error('Error checking follow status:', error);
+    res.status(500).json({ message: 'フォローステータスの取得に失敗しました。' });
+  }
+});
+
+
 
 
 
 // ユーザーのフォロワー数を取得
-app.get('/api/users/:userId/followers', async (req, res) => {
+// ユーザー情報の取得
+app.get('/api/users/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId);
-
+    const user = await User.findById(req.params.id).select('-password'); // パスワードを除外して取得
     if (!user) {
       return res.status(404).json({ message: 'ユーザーが見つかりません。' });
     }
-
-    res.json({ followerCount: user.followerCount });
+    res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'フォロワー数の取得に失敗しました。', error });
+    res.status(500).json({ message: 'ユーザー情報の取得に失敗しました。' });
   }
 });
 // 人気タグの集計とキャッシュ

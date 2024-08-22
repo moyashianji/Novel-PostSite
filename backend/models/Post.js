@@ -25,6 +25,8 @@ const postSchema = new mongoose.Schema({
   comments: [commentSchema],  // コメントを含む
 
   createdAt: { type: Date, default: Date.now },
+  bookShelfCounter: { type: Number, default: 0 }, // 本棚追加数
+
 });
 
 module.exports = mongoose.model('Post', postSchema);
