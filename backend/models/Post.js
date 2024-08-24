@@ -26,7 +26,10 @@ const postSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now },
   bookShelfCounter: { type: Number, default: 0 }, // 本棚追加数
-
+  series: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Series',  // シリーズ情報を保持するフィールドを追加
+  },
 });
 
 module.exports = mongoose.model('Post', postSchema);

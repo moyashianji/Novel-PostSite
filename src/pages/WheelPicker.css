@@ -1,0 +1,23 @@
+/* WheelPicker.css */
+.wheel-picker {
+    height: 150px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+  }
+  
+  .wheel-item {
+    font-size: 16px;
+    color: #666;
+    padding: 5px 0;
+    transition: transform 0.3s, color 0.3s;
+  }
+  
+  .wheel-item.selected {
+    font-size: 20px;
+    color: #000;
+    transform: scale(1.2);
+  }
+  

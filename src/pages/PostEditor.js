@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, IconButton } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, IconButton , MenuItem, Select, InputLabel, FormControl} from '@mui/material';
+
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { styled } from '@mui/system';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
+import SeriesCreationModal from '../components/SeriesCreationModal'; // モーダルコンポーネントをインポート
 
 // ReactQuill のスタイルに直接マージンを適用する
 const StyledQuill = styled(ReactQuill)({
@@ -34,11 +36,36 @@ const PostEditor = ({ user }) => {
   const [newTag, setNewTag] = useState('');
   const [description, setDescription] = useState('');
   const [aiGenerated, setAiGenerated] = useState(null);
+  const [series, setSeries] = useState('');
+  const [seriesList, setSeriesList] = useState([]);
+  const [openModal, setOpenModal] = useState(false);
+
   const [charCount, setCharCount] = useState(0);
   const [descCharCount, setDescCharCount] = useState(0);
   const navigate = useNavigate();
   const author = user ? user._id : null;
+  useEffect(() => {
+    const fetchSeries = async () => {
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch('http://localhost:5000/api/series', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const seriesData = await response.json();
+          setSeriesList(seriesData);
+        } else {
+          console.error('Failed to fetch series list');
+        }
+      } catch (error) {
+        console.error('Error fetching series:', error);
+      }
+    };
 
+    fetchSeries();
+  }, []);
   const handleContentChange = (value) => {
     setContent(value);
     setCharCount(value.replace(/<[^>]*>/g, '').length); // HTMLタグを除去して文字数をカウント
@@ -60,12 +87,12 @@ const PostEditor = ({ user }) => {
       alert('すべてのフィールドに入力してください。');
       return;
     }
-
+  
     if (!user || !user._id) {
       alert('ユーザー情報が見つかりません。再ログインしてください。');
       return;
     }
-
+  
     const postData = {
       title,
       content,
@@ -74,8 +101,9 @@ const PostEditor = ({ user }) => {
       aiGenerated,
       charCount,
       author,  // author を含める
+      series: series || null, // 選択されたシリーズを含める
     };
-
+  
     try {
       const response = await fetch('http://localhost:5000/api/posts', {
         method: 'POST',
@@ -85,8 +113,23 @@ const PostEditor = ({ user }) => {
         },
         body: JSON.stringify(postData),
       });
-
+  
       if (response.ok) {
+        const post = await response.json();
+  
+   // シリーズが選択されている場合、そのシリーズに投稿を追加
+   if (series) {
+    await fetch(`http://localhost:5000/api/series/${series}/addPost`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ postId: post._id }),
+    });
+  }
+
+  
         navigate('/');
       } else {
         alert('投稿に失敗しました。');
@@ -95,13 +138,52 @@ const PostEditor = ({ user }) => {
       console.error('Error submitting post:', error);
     }
   };
-
+  
+  
+  const handleCreateSeries = async (seriesData) => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch('http://localhost:5000/api/series', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(seriesData),
+      });
+      if (response.ok) {
+        const newSeries = await response.json();
+        setSeriesList([...seriesList, newSeries]);
+        setSeries(newSeries._id);
+        setOpenModal(false);
+      } else {
+        console.error('Failed to create series');
+      }
+    } catch (error) {
+      console.error('Error creating series:', error);
+    }
+  };
   return (
     <Box sx={{ maxWidth: 800, margin: 'auto', padding: 2 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         新規投稿
       </Typography>
-
+      <FormControl fullWidth margin="normal">
+        <InputLabel>シリーズ選択</InputLabel>
+        <Select
+          value={series}
+          onChange={(e) => setSeries(e.target.value)}
+        >
+          {seriesList.map((s) => (
+            <MenuItem key={s._id} value={s._id}>
+              {s.title}
+            </MenuItem>
+          ))}
+          <MenuItem value="" onClick={() => setOpenModal(true)}>
+            シリーズを新規作成
+          </MenuItem>
+        </Select>
+      </FormControl>
       <TextField
         label="タイトル"
         variant="outlined"
@@ -196,6 +278,11 @@ const PostEditor = ({ user }) => {
           投稿
         </Button>
       </Box>
+      <SeriesCreationModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onCreateSeries={handleCreateSeries}
+      />
     </Box>
   );
 };

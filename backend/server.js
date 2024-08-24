@@ -9,6 +9,8 @@ const fs = require('fs');
 const User = require('./models/User');
 const Post = require('./models/Post');
 const Good = require('./models/Good');
+const Series = require('./models/Series');
+
 const Follow = require('./models/Follow'); // Followモデルのインポート
 
 const NodeCache = require('node-cache');
@@ -74,15 +76,270 @@ const viewTracking = new Map(); // ユーザーごとに閲覧を追跡
     console.error('Error initializing viewCounter:', error);
   }
 })();
-// 本棚追加エンドポイント
-// 本棚追加/削除エンドポイント
-// server.js
-// 本棚トグルのエンドポイント
-// server.js
 
-// 本棚トグルのエンドポイント
-// 本棚に追加するエンドポイント
-// 本棚に追加するエンドポイント
+// サーバー起動時にフィールドの存在を確認して追加する関数
+const addMissingFields = async () => {
+  try {
+    // `bookShelfCounter` がない Post に対してフィールドを追加
+    await Post.updateMany(
+      { bookShelfCounter: { $exists: false } },
+      { $set: { bookShelfCounter: 0 } }
+    );
+
+    console.log('Missing `bookShelfCounter` fields have been added to Posts.');
+
+    // `bookShelf` がない User に対してフィールドを追加
+    await User.updateMany(
+      { bookShelf: { $exists: false } },
+      { $set: { bookShelf: [] } }
+    );
+
+    console.log('Missing `bookShelf` fields have been added to Users.');
+  } catch (error) {
+    console.error('Error adding missing fields:', error);
+  }
+};
+
+// サーバー起動時にフィールド追加処理を実行
+addMissingFields();
+// サーバー起動時にシリーズ内の投稿に番号を付与する関数
+
+// シリーズに含まれている作品一覧を取得するエンドポイント
+// 特定のシリーズに含まれるすべての作品を取得するエンドポイント
+// Series の posts を取得するエンドポイント
+app.get('/api/user/me/series', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const series = await Series.find({ author: userId }).populate('posts.postId');
+
+    const seriesData = series.map(s => {
+      const totalLikes = (s.posts || []).reduce((acc, post) => acc + (post.postId?.goodCounter || 0), 0);
+      const totalBookshelf = (s.posts || []).reduce((acc, post) => acc + (post.postId?.bookShelfCounter || 0), 0);
+      const totalViews = (s.posts || []).reduce((acc, post) => acc + (post.postId?.viewCounter || 0), 0);
+
+      return {
+        _id: s._id,
+        title: s.title,
+        description: s.description,
+        totalLikes,
+        totalBookshelf,
+        totalViews,
+        totalPoints: totalLikes * 2 + totalBookshelf * 2
+      };
+    });
+
+    res.status(200).json(seriesData);
+  } catch (error) {
+    console.error('Error fetching user series:', error);
+    res.status(500).json({ message: 'ユーザーのシリーズを取得できませんでした。', error });
+  }
+});
+app.get('/api/series/:id/posts', async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const series = await Series.findById(seriesId).populate('posts.postId');
+
+    if (!series) {
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    const postsWithEpisodes = series.posts
+      .filter(post => post.postId)
+      .map(post => ({
+        _id: post.postId._id,
+        title: post.postId.title,
+        episodeNumber: post.episodeNumber,
+      }));
+
+    res.status(200).json(postsWithEpisodes);
+  } catch (error) {
+    console.error('Error fetching series posts:', error);
+    res.status(500).json({ message: 'シリーズの投稿を取得できませんでした。', error });
+  }
+});
+// Series のタイトルを取得するエンドポイント
+app.get('/api/series/:id/title', async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const series = await Series.findById(seriesId);
+
+    if (!series) {
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    res.status(200).json({ title: series.title });
+  } catch (error) {
+    console.error('Error fetching series title:', error);
+    res.status(500).json({ message: 'シリーズのタイトルを取得できませんでした。', error });
+  }
+});
+// シリーズに投稿を追加するエンドポイント
+
+app.post('/api/series/:id/addPost', authenticateToken, async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const { postId } = req.body;
+
+    if (!postId) {
+      return res.status(400).json({ message: 'postIdが提供されていません。' });
+    }
+
+    const series = await Series.findById(seriesId);
+    if (!series) {
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    // 既存の最大エピソード番号を取得
+    const maxEpisodeNumber = series.posts.reduce(
+      (max, post) => Math.max(max, post.episodeNumber || 0),
+      0
+    );
+
+    // 新しいエピソード番号を決定
+    const episodeNumber = maxEpisodeNumber + 1;
+
+    // 既に存在しない場合のみ追加
+    if (!series.posts.some(post => post.postId?.toString() === postId.toString())) {
+      series.posts.push({ postId: postId.toString(), episodeNumber }); // postIdとepisodeNumberを設定
+      await series.save();
+    }
+
+    res.status(200).json({ message: 'シリーズに投稿が追加されました。' });
+  } catch (error) {
+    console.error('Error adding post to series:', error);
+    res.status(500).json({ message: 'シリーズに投稿を追加できませんでした。', error });
+  }
+});
+// シリーズ作成エンドポイント
+app.post('/api/series', authenticateToken, async (req, res) => {
+  try {
+    const { title, description, tags, isOriginal, isAdultContent, aiGenerated } = req.body;
+
+    const newSeries = new Series({
+      title,
+      description,
+      tags,
+      isOriginal,
+      isAdultContent,
+      aiGenerated,
+      author: req.user._id,
+    });
+
+    const savedSeries = await newSeries.save();
+    res.status(201).json(savedSeries);
+  } catch (error) {
+    console.error('Error creating series:', error);
+    res.status(500).json({ message: 'シリーズ作成に失敗しました。' });
+  }
+});
+
+// シリーズ一覧取得エンドポイント
+app.get('/api/series', authenticateToken, async (req, res) => {
+  try {
+    const series = await Series.find({ author: req.user._id });
+    res.json(series);
+  } catch (error) {
+    console.error('Error fetching series:', error);
+    res.status(500).json({ message: 'シリーズ取得に失敗しました。' });
+  }
+});
+// ユーザーの作品一覧を取得するエンドポイント
+app.get('/api/user/me/works', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Userの作品リストを取得
+    const works = await Post.find({ author: userId });
+
+    if (!works) {
+      return res.status(404).json({ message: '作品が見つかりませんでした。' });
+    }
+
+    res.status(200).json(works);
+  } catch (error) {
+    console.error('Error fetching user works:', error);
+    res.status(500).json({ message: '作品の取得に失敗しました。' });
+  }
+});
+// フォロワーリストを取得するエンドポイント
+app.get('/api/user/followers', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).populate('followers', 'nickname icon description');
+
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりません。' });
+    }
+
+    res.status(200).json(user.followers);
+  } catch (error) {
+    console.error('フォロワーリストの取得に失敗しました:', error);
+    res.status(500).json({ message: 'フォロワーリストの取得に失敗しました。' });
+  }
+});
+
+// いいねした作品リストを取得するエンドポイント
+app.get('/api/user/liked', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const likedPosts = await Good.find({ user: userId }).populate('post', 'title description author');
+
+    res.status(200).json(likedPosts.map(good => good.post));
+  } catch (error) {
+    console.error('いいねした作品リストの取得に失敗しました:', error);
+    res.status(500).json({ message: 'いいねした作品リストの取得に失敗しました。' });
+  }
+});
+
+// 自分の本棚リストを取得するエンドポイント
+app.get('/api/user/bookshelf', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).populate('bookShelf', 'title description author');
+
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりません。' });
+    }
+
+    res.status(200).json(user.bookShelf);
+  } catch (error) {
+    console.error('本棚リストの取得に失敗しました:', error);
+    res.status(500).json({ message: '本棚リストの取得に失敗しました。' });
+  }
+});
+
+// しおりリストを取得するエンドポイント
+app.get('/api/user/bookmarks', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).populate('bookmarks.novelId', 'title author');
+
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりません。' });
+    }
+
+    res.status(200).json(user.bookmarks);
+  } catch (error) {
+    console.error('しおりリストの取得に失敗しました:', error);
+    res.status(500).json({ message: 'しおりリストの取得に失敗しました。' });
+  }
+});
+// フォローしているユーザーリストを取得するエンドポイント
+app.get('/api/user/following', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).populate('following', 'nickname icon description');
+
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりません。' });
+    }
+
+    res.status(200).json(user.following);
+  } catch (error) {
+    console.error('フォローリストの取得に失敗しました:', error);
+    res.status(500).json({ message: 'フォローリストの取得に失敗しました。' });
+  }
+});
 // 本棚登録・解除のエンドポイント
 app.post('/api/posts/:id/bookshelf', authenticateToken, async (req, res) => {
   try {
@@ -95,18 +352,21 @@ app.post('/api/posts/:id/bookshelf', authenticateToken, async (req, res) => {
     let updatedBookshelfCounter;
 
     if (existingBookshelf) {
+
+
       // 本棚から削除
       await User.findByIdAndUpdate(req.user._id, { $pull: { bookShelf: post._id } });
       updatedBookshelfCounter = post.bookShelfCounter > 0 ? post.bookShelfCounter - 1 : 0;
       await Post.findByIdAndUpdate(req.params.id, { bookShelfCounter: updatedBookshelfCounter });
     } else {
       // 本棚に追加
+
       await User.findByIdAndUpdate(req.user._id, { $addToSet: { bookShelf: post._id } });
       updatedBookshelfCounter = post.bookShelfCounter + 1;
       await Post.findByIdAndUpdate(req.params.id, { bookShelfCounter: updatedBookshelfCounter });
     }
 
-    res.json({ bookshelfCounter: updatedBookshelfCounter, isInBookshelf: !existingBookshelf });
+    res.json({ bookShelfCounter: updatedBookshelfCounter, isInBookshelf: !existingBookshelf });
   } catch (error) {
     console.error('Error toggling bookshelf:', error);
     res.status(500).json({ message: '本棚登録のトグルに失敗しました。', error });
@@ -517,7 +777,7 @@ app.get('/api/users/:userId/works', async (req, res) => {
 });
 // 新規投稿エンドポイント
 app.post('/api/posts', authenticateToken, async (req, res) => {
-  const { title, content, description, tags, aiGenerated, charCount, author } = req.body;
+  const { title, content, description, tags, aiGenerated, charCount, author, series } = req.body;
 
   // バリデーション
   if (!title || !content || !description || !tags || tags.length === 0 || aiGenerated === null) {
@@ -534,10 +794,16 @@ app.post('/api/posts', authenticateToken, async (req, res) => {
       isAI: aiGenerated,      // フィールド名を isAI に変更
       wordCount: charCount,    // フィールド名を wordCount に変更
       author,
+      series, // シリーズIDを追加
     });
 
     // データベースに保存
     const savedPost = await newPost.save();
+
+    // シリーズが指定されている場合、そのシリーズに投稿を追加
+    if (series) {
+      await Series.findByIdAndUpdate(series, { $push: { posts: savedPost._id } });
+    }
 
     // 成功レスポンスを返す
     res.status(201).json(savedPost);

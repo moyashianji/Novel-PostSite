@@ -1,82 +1,115 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
-import { Container, Typography, Box, Button, Avatar, Grid, Paper,Chip } from '@mui/material';
+import { useParams, Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
+import { Container, Typography, Box, Button, Avatar, Grid, Paper, Chip, Card, CardContent, FormControl, Select, MenuItem, InputLabel } from '@mui/material';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import CommentSection from '../components/CommentSection';
 import AutoScroll from '../components/AutoScroll'; 
 import BookmarkButton from '../components/BookmarkButton';
-import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck'; // 追加
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks'; // 追加
-import VisibilityIcon  from '@mui/icons-material/Visibility'; // 追加
-
-import StarIcon from '@mui/icons-material/Star'; // 追加
+import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck'; 
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks'; 
+import VisibilityIcon  from '@mui/icons-material/Visibility'; 
+import StarIcon from '@mui/icons-material/Star'; 
 
 const NovelDetail = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [post, setPost] = useState(null);
   const [goodCount, setGoodCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
   const [bookshelfCount, setBookshelfCount] = useState(0);
-
   const [hasLiked, setHasLiked] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(50); 
   const [isBookmarkMode, setIsBookmarkMode] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isInBookshelf, setIsInBookshelf] = useState(false);
+  const [seriesPosts, setSeriesPosts] = useState([]);
+  const [selectedPostId, setSelectedPostId] = useState(id);
+  const [seriesTitle, setSeriesTitle] = useState([]);
+    useEffect(() => {
+      const fetchPost = async () => {
+        try {
+          const response = await fetch(`http://localhost:5000/api/posts/${id}`);
+          
+          const data = await response.json();
+          setPost(data);
+          setGoodCount(data.goodCounter);
+          setViewCount(data.viewCounter);
+          setBookshelfCount(data.bookShelfCounter); 
 
-  const navigate = useNavigate();
+        // シリーズの投稿を取得
+
+        // シリーズの投稿を取得
+        if (data.series) {
+          console.log('Series ID:', data.series);  // Series IDのデバッグメッセージ
+        
+          const seriesResponse = await fetch(`http://localhost:5000/api/series/${data.series}/posts`);
+          const seriestitleResponse = await fetch(`http://localhost:5000/api/series/${data.series}/title`);
+
+          console.log('Series API response status:', seriesResponse.status);  // レスポンスステータスのデバッグメッセージ
+        
+          if (seriesResponse.ok || seriestitleResponse.ok) {
+            const seriesData = await seriesResponse.json();
+            const seriesTitleData = await seriestitleResponse.json();
+            setSeriesPosts(seriesData);
+            setSeriesTitle(seriesTitleData);
+            console.log('Series posts title:', seriesData);  // 取得したデータのデバッグメッセージ
+
+          } else {
+            const errorText = await seriesResponse.text();
+            console.error('Failed to fetch series posts:', errorText);  // エラーメッセージのデバッグ
+          }
+        } else {
+          console.log('No series found for this post');  // シリーズが見つからなかった場合のデバッグメッセージ
+        }
+        const token = localStorage.getItem('token');
+    
+          await fetch(`http://localhost:5000/api/posts/${id}/view`, {
+            method: 'POST',
+          });
+    
+          if (token) {
+            const likeResponse = await fetch(`http://localhost:5000/api/posts/${id}/isLiked`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            const likeData = await likeResponse.json();
+            setHasLiked(likeData.hasLiked);
+    
+            const bookshelfResponse = await fetch(`http://localhost:5000/api/posts/${id}/isInBookshelf`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            const bookshelfData = await bookshelfResponse.json();
+            setIsInBookshelf(bookshelfData.isInBookshelf);
+    
+            const followResponse = await fetch(`http://localhost:5000/api/users/${data.author._id}/is-following`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            const followData = await followResponse.json();
+            setIsFollowing(followData.isFollowing);
+          }
+        } catch (error) {
+          console.error('Failed to fetch post:', error);
+        }
+      };
+    
+      fetchPost();
+    }, [id]);
 
   useEffect(() => {
-    const fetchPost = async () => {
-      try {
-        const response = await fetch(`http://localhost:5000/api/posts/${id}`);
-        const data = await response.json();
-        setPost(data);
-        setGoodCount(data.goodCounter);
-        setViewCount(data.viewCounter);
-        setBookshelfCount(data.bookshelfCounter);  // 本棚登録数を設定
-
-        await fetch(`http://localhost:5000/api/posts/${id}/view`, {
-          method: 'POST',
-        });
-
-        const token = localStorage.getItem('token');
-        if (token) {
-          const likeResponse = await fetch(`http://localhost:5000/api/posts/${id}/isLiked`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          const likeData = await likeResponse.json();
-          setHasLiked(likeData.hasLiked);
-   
-          const bookshelfResponse = await fetch(`http://localhost:5000/api/posts/${id}/isInBookshelf`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          const bookshelfData = await bookshelfResponse.json();
-          setIsInBookshelf(bookshelfData.isInBookshelf);
-          // フォローステータスを確認
-          const followResponse = await fetch(`http://localhost:5000/api/users/${data.author._id}/is-following`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          const followData = await followResponse.json();
-          setIsFollowing(followData.isFollowing);
-
-          // 本棚追加ステータスを確認
-
-        }
-      } catch (error) {
-        console.error('Failed to fetch post:', error);
-      }
-    };
-
-    fetchPost();
-  }, [id]);
+    if (location.state?.scrollTo) {
+      setTimeout(() => {
+        window.scrollTo(0, location.state.scrollTo);
+      }, 100);
+    }
+  }, [location]);
 
   const handleGoodClick = async () => {
     try {
@@ -106,6 +139,7 @@ const NovelDetail = () => {
       console.error('Error toggling good:', error);
     }
   };
+
   const handleBookshelfClick = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -124,7 +158,7 @@ const NovelDetail = () => {
   
       if (response.ok) {
         const data = await response.json();
-        setBookshelfCount(data.bookshelfCounter);
+        setBookshelfCount(data.bookShelfCounter);
         setIsInBookshelf(data.isInBookshelf);
       } else {
         const errorData = await response.json();
@@ -134,13 +168,14 @@ const NovelDetail = () => {
       console.error('Error toggling bookshelf status:', error);
     }
   };
+
   const handleBookmarkClick = () => {
     setIsBookmarkMode(!isBookmarkMode);
   };
 
   const handleTextClick = async (event) => {
     if (isBookmarkMode) {
-      const bookmarkPosition = window.scrollY + event.clientY; // ページ全体から見たY座標を取得
+      const bookmarkPosition = window.scrollY + event.clientY; 
       const token = localStorage.getItem('token');
       
       if (!token) {
@@ -204,8 +239,13 @@ const NovelDetail = () => {
       console.error('Error toggling follow status:', error);
     }
   };
+  const handleSeriesChange = (event) => {
+    const newPostId = event.target.value;
+    setSelectedPostId(newPostId);
+    navigate(`/novel/${newPostId}`);
+  };
 
-  const totalPoints = (goodCount * 2) + (bookshelfCount * 2);
+
   const handleTagClick = (tag) => {
     navigate(`/search?query=${encodeURIComponent(tag)}`);
   };
@@ -225,62 +265,57 @@ const NovelDetail = () => {
             {post.description}
           </Typography>
           <Box display="flex" alignItems="center" mb={2} flexWrap="wrap">
-  <Box display="flex" alignItems="center" sx={{ marginRight: 2, marginBottom: 1 }}>
-    <Typography variant="caption" sx={{ marginRight: 0.5 }}>
-      <VisibilityIcon fontSize="small" />
-    </Typography>
-    <Typography variant="caption">
-      {viewCount} 閲覧
-    </Typography>
-  </Box>
+            <Box display="flex" alignItems="center" sx={{ marginRight: 2, marginBottom: 1 }}>
+              <Typography variant="caption" sx={{ marginRight: 0.5 }}>
+                <VisibilityIcon fontSize="small" />
+              </Typography>
+              <Typography variant="caption">
+                {viewCount} 閲覧
+              </Typography>
+            </Box>
 
-  <Box display="flex" alignItems="center" sx={{ marginRight: 2, marginBottom: 1 }}>
-    <ThumbUpIcon fontSize="small" sx={{ marginRight: 0.5 }} />
-    <Typography variant="caption">
-      {goodCount || 0} いいね
-    </Typography>
-  </Box>
+            <Box display="flex" alignItems="center" sx={{ marginRight: 2, marginBottom: 1 }}>
+              <ThumbUpIcon fontSize="small" sx={{ marginRight: 0.5 }} />
+              <Typography variant="caption">
+                {goodCount || 0} いいね
+              </Typography>
+            </Box>
 
-  <Box display="flex" alignItems="center" sx={{ marginRight: 2, marginBottom: 1 }}>
-    <LibraryBooksIcon fontSize="small" sx={{ marginRight: 0.5 }} />
-    <Typography variant="caption">
-      {bookshelfCount || 0} 本棚
-    </Typography>
-  </Box>
+            <Box display="flex" alignItems="center" sx={{ marginRight: 2, marginBottom: 1 }}>
+              <LibraryBooksIcon fontSize="small" sx={{ marginRight: 0.5 }} />
+              <Typography variant="caption">
+                {bookshelfCount || 0} 本棚
+              </Typography>
+            </Box>
 
-  <Box display="flex" alignItems="center" sx={{ marginBottom: 1 }}>
-    <StarIcon fontSize="small" sx={{ marginRight: 0.5 }} />
-    <Typography variant="caption">
-      総合ポイント: {((goodCount || 0) * 2) + ((bookshelfCount || 0) * 2)}pt
-    </Typography>
-  </Box>
-</Box>
+            <Box display="flex" alignItems="center" sx={{ marginBottom: 1 }}>
+              <StarIcon fontSize="small" sx={{ marginRight: 0.5 }} />
+              <Typography variant="caption">
+                総合ポイント: {((goodCount || 0) * 2) + ((bookshelfCount || 0) * 2)}pt
+              </Typography>
+            </Box>
+          </Box>
 
-      {/* 作品のタグを表示 */}
-<Box sx={{ marginTop: 2 }}>
-  <Typography variant="h6" sx={{ marginBottom: 1 }}>
-  </Typography>
-  <Box display="flex" flexWrap="wrap" gap={1}>
-    {post.tags && post.tags.length > 0 ? (
-      post.tags.map((tag, index) => (
-        <Chip 
-        key={index}
-        label={tag}
-        sx={{ marginRight: 0.5, marginBottom: 0.5 }}
-          onClick={() => handleTagClick(tag)} // タグをクリックしたら検索ページに遷移
-
-        />
-
-      ))
-    ) : (
-      <Typography variant="body2" color="textSecondary">
-        タグはありません
-
-      </Typography>
-    )}
-  </Box>
-</Box>
-<Box sx={{ height: '16px' }} />  {/* 16px の高さで一行分の空白を追加 */}
+          {/* 作品のタグを表示 */}
+          <Box sx={{ marginTop: 2 }}>
+            <Box display="flex" flexWrap="wrap" gap={1}>
+              {post.tags && post.tags.length > 0 ? (
+                post.tags.map((tag, index) => (
+                  <Chip 
+                    key={index}
+                    label={tag}
+                    sx={{ marginRight: 0.5, marginBottom: 0.5 }}
+                    onClick={() => handleTagClick(tag)} 
+                  />
+                ))
+              ) : (
+                <Typography variant="body2" color="textSecondary">
+                  タグはありません
+                </Typography>
+              )}
+            </Box>
+          </Box>
+          <Box sx={{ height: '16px' }} />  
 
           {/* 自動スクロール機能 */}
           <AutoScroll scrollSpeed={scrollSpeed} setScrollSpeed={setScrollSpeed} />
@@ -326,83 +361,112 @@ const NovelDetail = () => {
             )}
           </Box>
           <Box 
-  display="flex" 
-  alignItems="center" 
-  sx={{ 
-    marginBottom: 4, 
-    gap: 2,  // ボタン間のスペースを追加
-    flexWrap: 'wrap'  // レスポンシブ対応で折り返し可能にする
-  }}
->
-  <Button
-    variant="contained"
-    color={hasLiked ? 'secondary' : 'primary'}
-    startIcon={hasLiked ? <ThumbUpIcon /> : <ThumbUpOffAltIcon />}
-    onClick={handleGoodClick}
-    sx={{ 
-      marginBottom: { xs: 2, md: 0 },  // 小さい画面ではボタンの間にスペースを追加
-      minWidth: '150px',  // ボタンの最小幅を設定
-      flex: '1',  // ボタンの幅を均等にする
-      textAlign: 'center' // テキストを中央に揃える
-    }}
-  >
-    {hasLiked ? 'いいねを解除' : 'いいね'}
-  </Button>
+            display="flex" 
+            alignItems="center" 
+            sx={{ 
+              marginBottom: 4, 
+              gap: 2, 
+              flexWrap: 'wrap'  
+            }}
+          >
+            <Button
+              variant="contained"
+              color={hasLiked ? 'secondary' : 'primary'}
+              startIcon={hasLiked ? <ThumbUpIcon /> : <ThumbUpOffAltIcon />}
+              onClick={handleGoodClick}
+              sx={{ 
+                marginBottom: { xs: 2, md: 0 },  
+                minWidth: '150px',  
+                flex: '1',  
+                textAlign: 'center' 
+              }}
+            >
+              {hasLiked ? 'いいねを解除' : 'いいね'}
+            </Button>
 
-  <Button
-    variant="contained"
-    color={isInBookshelf ? 'secondary' : 'primary'}
-    startIcon={isInBookshelf ? <LibraryAddCheckIcon /> : <LibraryBooksIcon />}
-    onClick={handleBookshelfClick}
-    sx={{ 
-      minWidth: '150px',  // ボタンの最小幅を設定
-      flex: '1',  // ボタンの幅を均等にする
-      textAlign: 'center'  // テキストを中央に揃える
-    }}
-  >
-    {isInBookshelf ? '本棚から削除' : '本棚に追加'}
-  </Button>
-</Box>
+            <Button
+              variant="contained"
+              color={isInBookshelf ? 'secondary' : 'primary'}
+              startIcon={isInBookshelf ? <LibraryAddCheckIcon /> : <LibraryBooksIcon />}
+              onClick={handleBookshelfClick}
+              sx={{ 
+                minWidth: '150px',  
+                flex: '1',  
+                textAlign: 'center'  
+              }}
+            >
+              {isInBookshelf ? '本棚から削除' : '本棚に追加'}
+            </Button>
+          </Box>
 
-
-          {/* コメントセクションを追加 */}
           <CommentSection postId={id} />
         </Grid>
 
-        {/* 右サイドバー */}
         <Grid item xs={12} md={3}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              padding: 2, 
-              textAlign: 'center', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <RouterLink to={`/user/${post.author._id}`}>
-              <Avatar 
-                src={`http://localhost:5000${post.author.icon}`} 
-                alt={post.author.nickname} 
-                sx={{ width: 100, height: 100, marginBottom: 2 }}
-              />
-            </RouterLink>
-            <Typography variant="h6">{post.author.nickname}</Typography>
-            <Button
-              variant={isFollowing ? 'contained' : 'outlined'}
-              color="primary"
-              onClick={handleFollowToggle}
-              sx={{ mt: 2 }}
-            >
-              {isFollowing ? 'フォロー解除' : 'フォロー'}
-            </Button>
-          </Paper>
-        </Grid>
+  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
+    <Paper 
+      elevation={3} 
+      sx={{ 
+        padding: 2, 
+        textAlign: 'center', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <RouterLink to={`/user/${post.author._id}`}>
+        <Avatar 
+          src={`http://localhost:5000${post.author.icon}`} 
+          alt={post.author.nickname} 
+          sx={{ width: 100, height: 100, marginBottom: 2 }}
+        />
+      </RouterLink>
+      <Typography variant="h6">{post.author.nickname}</Typography>
+      <Button
+        variant={isFollowing ? 'contained' : 'outlined'}
+        color="primary"
+        onClick={handleFollowToggle}
+        sx={{ mt: 2 }}
+      >
+        {isFollowing ? 'フォロー解除' : 'フォロー'}
+      </Button>
+    </Paper>
+  </Box>
+  
+  {post.series && seriesPosts && seriesPosts.length > 0 && (
+            <Box sx={{ mt: 4 }}>
+<Typography 
+  variant="h6" 
+  gutterBottom 
+  sx={{ 
+    wordBreak: 'break-word', 
+    whiteSpace: 'pre-wrap' 
+  }}
+>
+ {seriesTitle.title}
+</Typography>
+              <FormControl fullWidth>
+                <InputLabel>シリーズの投稿を選択</InputLabel>
+                <Select
+                  value={selectedPostId}
+                  onChange={handleSeriesChange}
+                  label="シリーズの投稿を選択"
+                >
+                  {seriesPosts.map((postItem) => (
+                    <MenuItem key={postItem._id} value={postItem._id}>
+                      {`${postItem.episodeNumber}: ${postItem.title}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
 
+</Grid>
       </Grid>
     </Container>
   );
 };
+
 export default NovelDetail;
