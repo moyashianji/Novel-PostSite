@@ -258,11 +258,6 @@ const MyPage = () => {
         
         case 'series':
           return series.map((seriesItem) => {
-            const totalLikes = (seriesItem.posts || []).reduce((acc, post) => acc + (post.goodCounter || 0), 0);
-            const totalBookshelf = (seriesItem.posts || []).reduce((acc, post) => acc + (post.bookShelfCounter || 0), 0);
-            const totalViews = (seriesItem.posts || []).reduce((acc, post) => acc + (post.viewCounter || 0), 0);
-            const totalPoints = totalLikes * 2 + totalBookshelf * 2;
-    
             return (
               <Card key={seriesItem._id} sx={{ marginBottom: 2, width: '100%', cursor: 'pointer' }}>
                 <CardContent>
@@ -271,10 +266,19 @@ const MyPage = () => {
                     {seriesItem.description}
                   </Typography>
                   <Box display="flex" justifyContent="space-between" sx={{ marginTop: 1 }}>
-                    <Typography variant="caption">いいね数: {totalLikes}</Typography>
-                    <Typography variant="caption">本棚登録数: {totalBookshelf}</Typography>
-                    <Typography variant="caption">閲覧数: {totalViews}</Typography>
-                    <Typography variant="caption">総合ポイント: {totalPoints}pt</Typography>
+                    <Typography variant="caption">いいね数: {seriesItem.totalLikes}</Typography>
+                    <Typography variant="caption">本棚登録数: {seriesItem.totalBookshelf}</Typography>
+                    <Typography variant="caption">閲覧数: {seriesItem.totalViews}</Typography>
+                    <Typography variant="caption">総合ポイント: {seriesItem.totalPoints}pt</Typography>
+                  </Box>
+                  <Box sx={{ marginTop: 2 }}>
+                    <Button 
+                      variant="contained" 
+                      color="primary" 
+                      onClick={() => navigate(`/series/${seriesItem._id}/edit`)}
+                    >
+                      シリーズを編集
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>

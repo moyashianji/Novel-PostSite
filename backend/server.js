@@ -102,8 +102,130 @@ const addMissingFields = async () => {
 
 // サーバー起動時にフィールド追加処理を実行
 addMissingFields();
-// サーバー起動時にシリーズ内の投稿に番号を付与する関数
+// シリーズから特定の投稿を削除するエンドポイント
 
+app.post('/api/series/:id/removePost', authenticateToken, async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const { postId } = req.body;
+
+    console.log(`Received request to remove post with ID: ${postId} from series with ID: ${seriesId}`);
+
+    if (!postId) {
+      console.log('No postId provided in the request');
+      return res.status(400).json({ message: 'postIdが提供されていません。' });
+    }
+
+    const series = await Series.findById(seriesId);
+    if (!series) {
+      console.log('Series not found');
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    const postIndex = series.posts.findIndex(post => post.postId && post.postId.toString() === postId.toString());
+    if (postIndex === -1) {
+      console.log('Post not found in series');
+      return res.status(404).json({ message: 'シリーズにその投稿が見つかりませんでした。' });
+    }
+
+    series.posts.splice(postIndex, 1); // 該当する投稿を配列から削除
+    await series.save();
+
+    console.log(`Post with ID ${postId} successfully removed from series with ID ${seriesId}`);
+    res.status(200).json({ message: 'シリーズから投稿が削除されました。' });
+  } catch (error) {
+    console.error('Error removing post from series:', error);
+    res.status(500).json({ message: 'シリーズから投稿を削除できませんでした。', error });
+  }
+});
+
+app.get('/api/user/me/novels', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id; // authenticateToken ミドルウェアで設定されたユーザーID
+    const novels = await Post.find({ author: userId });
+
+    res.status(200).json(novels);
+  } catch (error) {
+    console.error('Error fetching user novels:', error);
+    res.status(500).json({ message: '小説の取得に失敗しました。' });
+  }
+});
+
+app.post('/api/series/:id/updatePosts', authenticateToken, async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const { posts } = req.body;
+
+    console.log(`Received request to update series with ID: ${seriesId}`);
+    console.log(`Received posts data: ${JSON.stringify(posts)}`);
+
+    const series = await Series.findById(seriesId);
+    if (!series) {
+      console.log('Series not found');
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    // デバッグメッセージ
+    console.log(`Current series data before update: ${JSON.stringify(series.posts, null, 2)}`);
+
+    // posts配列を使ってseries.posts内の各エピソードのエピソード番号を更新
+
+    series.posts.forEach(existingPost => {
+      const updatedPost = posts.find(post => post.postId === existingPost.postId?.toString());
+      if (updatedPost) {
+        console.log(`Updating postId ${existingPost.postId}: setting episodeNumber to ${updatedPost.episodeNumber}`);
+        existingPost.episodeNumber = updatedPost.episodeNumber;
+      } else {
+        console.log(`No update needed for post with postId: ${existingPost.postId}`);
+      }
+    });
+
+    await series.save();
+
+    // デバッグメッセージ
+    console.log(`Updated series data after save: ${JSON.stringify(series.posts, null, 2)}`);
+
+    res.status(200).json({ message: 'エピソードの順序が更新されました。' });
+  } catch (error) {
+    console.error('Error updating posts order:', error);
+    res.status(500).json({ message: 'エピソードの順序を更新できませんでした。', error: error.message });
+  }
+});
+
+// シリーズの詳細情報を取得するエンドポイント
+app.get('/api/series/:id', async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const series = await Series.findById(seriesId).populate('posts.postId');
+
+    if (!series) {
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    const populatedPosts = series.posts.map((post) => {
+      if (post.postId) {
+        return {
+          _id: post.postId._id,
+          title: post.postId.title,
+          description: post.postId.description,
+          goodCounter: post.postId.goodCounter,
+          bookShelfCounter: post.postId.bookShelfCounter,
+          viewCounter: post.postId.viewCounter,
+          episodeNumber: post.episodeNumber,
+        };
+      }
+      return null;
+    }).filter(post => post !== null);
+
+    res.status(200).json({
+      ...series.toObject(),
+      posts: populatedPosts,
+    });
+  } catch (error) {
+    console.error('Error fetching series details:', error);
+    res.status(500).json({ message: 'シリーズの詳細情報を取得できませんでした。', error });
+  }
+});
 // シリーズに含まれている作品一覧を取得するエンドポイント
 // 特定のシリーズに含まれるすべての作品を取得するエンドポイント
 // Series の posts を取得するエンドポイント
@@ -111,12 +233,42 @@ app.get('/api/user/me/series', authenticateToken, async (req, res) => {
   try {
     const userId = req.user._id;
     const series = await Series.find({ author: userId }).populate('posts.postId');
-
     const seriesData = series.map(s => {
-      const totalLikes = (s.posts || []).reduce((acc, post) => acc + (post.postId?.goodCounter || 0), 0);
-      const totalBookshelf = (s.posts || []).reduce((acc, post) => acc + (post.postId?.bookShelfCounter || 0), 0);
-      const totalViews = (s.posts || []).reduce((acc, post) => acc + (post.postId?.viewCounter || 0), 0);
-
+      console.log(`Processing series: ${s._id}`);
+    
+      // posts の存在確認
+      if (!s.posts || s.posts.length === 0) {
+        console.warn(`No posts found for series: ${s._id}`);
+        return { ...s, totalLikes: 0, totalBookshelf: 0, totalViews: 0 };
+      }
+    
+      // posts の内容を出力
+      s.posts.forEach((post, index) => {
+        console.log(`Post ${index + 1}:`, post);
+      });
+    
+      // 各シリーズの全投稿の合計を計算
+      const totalLikes = (s.posts || []).reduce((acc, post) => {
+        const likes = post.postId?.goodCounter || 0;
+        console.log(`Adding ${likes} likes from post ${post.postId?._id || 'unknown'}`);
+        return acc + likes;
+      }, 0);
+    
+      const totalBookshelf = (s.posts || []).reduce((acc, post) => {
+        const bookshelfCount = post.postId?.bookShelfCounter || 0;
+        console.log(`Adding ${bookshelfCount} bookshelf count from post ${post.postId?._id || 'unknown'}`);
+        return acc + bookshelfCount;
+      }, 0);
+    
+      const totalViews = (s.posts || []).reduce((acc, post) => {
+        const views = post.postId?.viewCounter || 0;
+        console.log(`Adding ${views} views from post ${post.postId?._id || 'unknown'}`);
+        return acc + views;
+      }, 0);
+    
+      console.log(`Total likes for series ${s._id}: ${totalLikes}`);
+      console.log(`Total bookshelf count for series ${s._id}: ${totalBookshelf}`);
+      console.log(`Total views for series ${s._id}: ${totalViews}`);
       return {
         _id: s._id,
         title: s.title,
@@ -831,7 +983,7 @@ app.post('/api/register', upload.single('icon'), async (req, res) => {
     const newUser = new User({ email, password: hashedPassword, nickname, icon: iconPath, dob, gender });
     await newUser.save();
 
-    const token = jwt.sign({ id: newUser._id }, 'secret_key', { expiresIn: '1h' });
+    const token = jwt.sign({ id: newUser._id }, 'secret_key', { expiresIn: '1d' });
     res.status(201).json({ message: 'User registered successfully', token });
   } catch (err) {
     console.error('Error registering user:', err);
