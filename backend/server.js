@@ -102,40 +102,110 @@ const addMissingFields = async () => {
 
 // サーバー起動時にフィールド追加処理を実行
 addMissingFields();
+
+// 特定の投稿の詳細を取得するエンドポイント
+app.get('/api/posts/:id/edit', authenticateToken, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: '投稿が見つかりませんでした。' });
+    }
+
+    res.status(200).json(post);
+  } catch (error) {
+    console.error('Error fetching post details:', error);
+    res.status(500).json({ message: '投稿の取得に失敗しました。' });
+  }
+});
+
+// 特定の投稿を更新するエンドポイント
+app.post('/api/posts/:id/update', authenticateToken, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const { title, content, description, tags, original, adultContent, aiGenerated ,charCount} = req.body;
+
+    // 投稿をデータベースから取得
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: '投稿が見つかりませんでした。' });
+    }
+
+    // 投稿の各フィールドを更新
+    post.title = title || post.title;
+    post.content = content || post.content;
+    post.description = description || post.description;
+    post.tags = tags || post.tags;
+    post.isOriginal = original;
+    post.isAdultContent = adultContent;
+    post.isAI = aiGenerated;
+    post.wordCount = charCount;
+    // 更新内容を保存
+    await post.save();
+
+    res.status(200).json({ message: '投稿が更新されました。', post });
+  } catch (error) {
+    console.error('Error updating post:', error);
+    res.status(500).json({ message: '投稿の更新に失敗しました。' });
+  }
+});
 // シリーズから特定の投稿を削除するエンドポイント
+app.post('/api/series/:id/update', authenticateToken, async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const { title, description, tags, isOriginal, isAdultContent, aiGenerated } = req.body;
+
+    const series = await Series.findById(seriesId);
+    if (!series) {
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    // シリーズ情報を更新
+    series.title = title;
+    series.description = description;
+    series.tags = tags;
+    series.isOriginal = isOriginal;
+    series.isAdultContent = isAdultContent;
+    series.aiGenerated = aiGenerated;
+
+    await series.save();
+
+    res.status(200).json(series);
+  } catch (error) {
+    console.error('Error updating series information:', error);
+    res.status(500).json({ message: 'シリーズ情報を更新できませんでした。', error });
+  }
+});
+
 
 app.post('/api/series/:id/removePost', authenticateToken, async (req, res) => {
   try {
     const seriesId = req.params.id;
     const { postId } = req.body;
 
-    console.log(`Received request to remove post with ID: ${postId} from series with ID: ${seriesId}`);
-
     if (!postId) {
-      console.log('No postId provided in the request');
       return res.status(400).json({ message: 'postIdが提供されていません。' });
     }
 
+    // シリーズを検索
     const series = await Series.findById(seriesId);
     if (!series) {
-      console.log('Series not found');
       return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
     }
 
-    const postIndex = series.posts.findIndex(post => post.postId && post.postId.toString() === postId.toString());
-    if (postIndex === -1) {
-      console.log('Post not found in series');
-      return res.status(404).json({ message: 'シリーズにその投稿が見つかりませんでした。' });
-    }
-
-    series.posts.splice(postIndex, 1); // 該当する投稿を配列から削除
+    // シリーズから該当の投稿を削除
+    series.posts = series.posts.filter(post => post.postId?.toString() !== postId.toString());
     await series.save();
 
-    console.log(`Post with ID ${postId} successfully removed from series with ID ${seriesId}`);
-    res.status(200).json({ message: 'シリーズから投稿が削除されました。' });
+    // Post モデルの series フィールドからシリーズIDを削除
+    await Post.findByIdAndUpdate(postId, { $pull: { series: seriesId } }, { new: true, runValidators: false });
+
+    res.status(200).json({ message: '作品がシリーズから削除されました。' });
   } catch (error) {
     console.error('Error removing post from series:', error);
-    res.status(500).json({ message: 'シリーズから投稿を削除できませんでした。', error });
+    res.status(500).json({ message: 'シリーズから作品を削除できませんでした。', error });
   }
 });
 
@@ -193,15 +263,19 @@ app.post('/api/series/:id/updatePosts', authenticateToken, async (req, res) => {
 });
 
 // シリーズの詳細情報を取得するエンドポイント
-app.get('/api/series/:id', async (req, res) => {
+app.get('/api/series/:id', authenticateToken, async (req, res) => {
   try {
     const seriesId = req.params.id;
-    const series = await Series.findById(seriesId).populate('posts.postId');
+    const userId = req.user._id; // 認証されたユーザーのIDを取得
+
+    // 自分のシリーズのみアクセスを許可
+    const series = await Series.findOne({ _id: seriesId, author: userId }).populate('posts.postId');
 
     if (!series) {
       return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
     }
 
+    // 各投稿の詳細情報を抽出
     const populatedPosts = series.posts.map((post) => {
       if (post.postId) {
         return {
@@ -217,8 +291,15 @@ app.get('/api/series/:id', async (req, res) => {
       return null;
     }).filter(post => post !== null);
 
+    // 必要に応じて他のフィールドも追加する
     res.status(200).json({
-      ...series.toObject(),
+      _id: series._id,
+      title: series.title,
+      description: series.description,
+      tags: series.tags,
+      isOriginal: series.isOriginal,
+      isAdultContent: series.isAdultContent,
+      aiGenerated: series.aiGenerated,
       posts: populatedPosts,
     });
   } catch (error) {
@@ -226,6 +307,7 @@ app.get('/api/series/:id', async (req, res) => {
     res.status(500).json({ message: 'シリーズの詳細情報を取得できませんでした。', error });
   }
 });
+
 // シリーズに含まれている作品一覧を取得するエンドポイント
 // 特定のシリーズに含まれるすべての作品を取得するエンドポイント
 // Series の posts を取得するエンドポイント
@@ -336,6 +418,7 @@ app.post('/api/series/:id/addPost', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'postIdが提供されていません。' });
     }
 
+    // シリーズを検索
     const series = await Series.findById(seriesId);
     if (!series) {
       return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
@@ -350,16 +433,19 @@ app.post('/api/series/:id/addPost', authenticateToken, async (req, res) => {
     // 新しいエピソード番号を決定
     const episodeNumber = maxEpisodeNumber + 1;
 
-    // 既に存在しない場合のみ追加
+    // シリーズに作品が既に存在しない場合のみ追加
     if (!series.posts.some(post => post.postId?.toString() === postId.toString())) {
       series.posts.push({ postId: postId.toString(), episodeNumber }); // postIdとepisodeNumberを設定
       await series.save();
     }
 
-    res.status(200).json({ message: 'シリーズに投稿が追加されました。' });
+    // Post モデルの series フィールドにシリーズIDを追加
+    await Post.findByIdAndUpdate(postId, { $addToSet: { series: seriesId } }, { new: true, runValidators: false });
+
+    res.status(200).json({ message: '作品がシリーズに追加されました。' });
   } catch (error) {
     console.error('Error adding post to series:', error);
-    res.status(500).json({ message: 'シリーズに投稿を追加できませんでした。', error });
+    res.status(500).json({ message: 'シリーズに作品を追加できませんでした。', error });
   }
 });
 // シリーズ作成エンドポイント
@@ -929,10 +1015,10 @@ app.get('/api/users/:userId/works', async (req, res) => {
 });
 // 新規投稿エンドポイント
 app.post('/api/posts', authenticateToken, async (req, res) => {
-  const { title, content, description, tags, aiGenerated, charCount, author, series } = req.body;
+  const { title, content, description, tags, original,adultContent,aiGenerated, charCount, author, series } = req.body;
 
   // バリデーション
-  if (!title || !content || !description || !tags || tags.length === 0 || aiGenerated === null) {
+  if (!title || !content || !description || !tags || tags.length === 0 || aiGenerated === null || original === null || adultContent === null) {
     return res.status(400).json({ message: 'すべてのフィールドに入力してください。' });
   }
 
@@ -943,6 +1029,8 @@ app.post('/api/posts', authenticateToken, async (req, res) => {
       content,
       description,
       tags,
+      isOriginal: original,
+      isAdultContent: adultContent,
       isAI: aiGenerated,      // フィールド名を isAI に変更
       wordCount: charCount,    // フィールド名を wordCount に変更
       author,
