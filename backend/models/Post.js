@@ -17,7 +17,15 @@ const postSchema = new mongoose.Schema({
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   images: [{ type: String }],
   wordCount: { type: Number, required: true },
-  isAI: { type: Boolean, required: true },
+  isOriginal: {
+    type: Boolean,
+    required: false,
+  },
+  isAdultContent: {
+    type: Boolean,
+    required: false,
+  },
+  isAI: { type: Boolean, required: false },
 
   viewCounter: { type: Number, default: 0 }, // 閲覧数
   goodCounter: { type: Number, default: 0 }, // いいね数
@@ -30,6 +38,7 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Series',  // シリーズ情報を保持するフィールドを追加
   },
+  
 });
 
 module.exports = mongoose.model('Post', postSchema);

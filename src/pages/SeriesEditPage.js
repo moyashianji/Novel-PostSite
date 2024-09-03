@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Typography, Box, Card, CardContent, IconButton, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import {
+  Container, Typography, Box, Card, CardContent, IconButton, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Checkbox, FormControlLabel,
+} from '@mui/material';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -8,6 +10,7 @@ import { Fab } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AddNovelModal from '../components/AddNovelModal';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SeriesEditSidebar from '../components/SeriesEditSidebar';  // インポート
 
 const SeriesEditPage = () => {
   const { id } = useParams();
@@ -18,42 +21,43 @@ const SeriesEditPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
 
-  useEffect(() => {
-    const fetchSeries = async () => {
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(`http://localhost:5000/api/series/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
+  const fetchSeries = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`http://localhost:5000/api/series/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        // エピソード番号でソートする
-        data.posts.sort((a, b) => a.episodeNumber - b.episodeNumber);
-
-        setSeries(data);
-      } catch (error) {
-        console.error('Error fetching series details:', error);
+      if (response.status === 404) {
+        navigate('/mypage'); // マイページにリダイレクト
+        return;
       }
-    };
 
-    fetchSeries();
+
+      const data = await response.json();
+
+      // エピソード番号でソートする
+      data.posts.sort((a, b) => a.episodeNumber - b.episodeNumber);
+
+      setSeries(data);
+    } catch (error) {
+      console.error('Error fetching series details:', error);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchSeries();
+  }, [fetchSeries]);
+
 
   const moveCard = useCallback(
     (dragIndex, hoverIndex) => {
       const updatedPosts = [...series.posts];
       const [removed] = updatedPosts.splice(dragIndex, 1);
       updatedPosts.splice(hoverIndex, 0, removed);
-  
-      console.log(`Moved card from index ${dragIndex} to ${hoverIndex}`);
-      console.log('Updated post order after move:', updatedPosts.map(post => ({
-        postId: post._id,
-        title: post.title,
-        newPosition: updatedPosts.indexOf(post) + 1,
-      })));
-  
+
       setSeries({ ...series, posts: updatedPosts });
       setIsModified(true); // 移動があった場合、保存ボタンを有効化
     },
@@ -65,6 +69,8 @@ const SeriesEditPage = () => {
   };
 
   const handleCloseModal = () => {
+   fetchSeries();
+
     setIsModalOpen(false);
   };
 
@@ -79,8 +85,6 @@ const SeriesEditPage = () => {
       return;
     }
 
-    console.log('Attempting to delete post with ID:', postToDelete);
-
     try {
       const response = await fetch(`http://localhost:5000/api/series/${id}/removePost`, {
         method: 'POST',
@@ -92,13 +96,11 @@ const SeriesEditPage = () => {
       });
 
       if (response.ok) {
-        console.log(`Successfully removed post with ID: ${postToDelete}`);
         setSeries({
           ...series,
           posts: series.posts.filter(post => post._id !== postToDelete),
         });
         setDeleteDialogOpen(false);  // ダイアログを閉じる
-
         setPostToDelete(null);
       } else {
         const errorMessage = await response.text();
@@ -119,9 +121,7 @@ const SeriesEditPage = () => {
       postId: post._id, // postIdをそのまま送る
       episodeNumber: index + 1, // カードが上から何番目にあるかを基に新しいエピソード番号を設定
     }));
-  
-    console.log('Saving new post order:', updatedPosts);
-  
+
     try {
       const response = await fetch(`http://localhost:5000/api/series/${id}/updatePosts`, {
         method: 'POST',
@@ -131,10 +131,13 @@ const SeriesEditPage = () => {
         },
         body: JSON.stringify({ posts: updatedPosts }),
       });
-  
+
       if (response.ok) {
-        console.log('Successfully updated episode numbers.');
+        
         setIsModified(false);
+        
+        await fetchSeries();
+
         alert('エピソード番号が更新されました。');
       } else {
         const errorMessage = await response.text();
@@ -149,35 +152,53 @@ const SeriesEditPage = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <Container>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-          <Typography variant="h4" gutterBottom>
-            シリーズ: {series.title}
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={!isModified} // 変更がない場合はボタンを無効化
-            onClick={handleSave}
-          >
-            保存
-          </Button>
+      <Container sx={{ display: 'flex' }}>
+        <Box sx={{ flex: 1, marginRight: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <Typography variant="h4" gutterBottom>
+              シリーズ: {series.title}
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 1 }}>  {/* ここで gap を追加 */}
+            {/* 追加ボタンを追加 */}
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleAddNovelClick}
+            >
+              追加
+            </Button>
+            
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={!isModified} // 変更がない場合はボタンを無効化
+              onClick={handleSave}
+              sx={{ marginRight: 2 }}
+            >
+              保存
+            </Button>
+
+          </Box>
+          </Box>
+          {series.posts && series.posts.length > 0 ? (
+            series.posts.map((post, index) => (
+              <CardItem
+                key={post._id}
+                post={post}
+                index={index}
+                moveCard={moveCard}
+                onDelete={handleDeleteClick} // 削除ボタンのクリックイベントを渡す
+              />
+            ))
+          ) : (
+            <Typography variant="body2" color="textSecondary">
+              このシリーズにはまだ作品がありません。
+            </Typography>
+          )}
         </Box>
-        {series.posts && series.posts.length > 0 ? (
-          series.posts.map((post, index) => (
-            <CardItem
-              key={post._id}
-              post={post}
-              index={index}
-              moveCard={moveCard}
-              onDelete={handleDeleteClick} // 削除ボタンのクリックイベントを渡す
-            />
-          ))
-        ) : (
-          <Typography variant="body2" color="textSecondary">
-            このシリーズにはまだ作品がありません。
-          </Typography>
-        )}
+
+        <SeriesEditSidebar series={series} setSeries={setSeries} />
 
         {/* 削除確認ダイアログ */}
         <Dialog

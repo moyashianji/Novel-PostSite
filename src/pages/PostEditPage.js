@@ -1,35 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, IconButton , MenuItem, Select, InputLabel, FormControl} from '@mui/material';
-
+import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, IconButton, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { useParams, useNavigate } from 'react-router-dom';
+import { styled } from '@mui/system';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { styled } from '@mui/system';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-import { useNavigate } from 'react-router-dom';
-import SeriesCreationModal from '../components/SeriesCreationModal'; // モーダルコンポーネントをインポート
 
-// ReactQuill のスタイルに直接マージンを適用する
 const StyledQuill = styled(ReactQuill)({
-  marginTop: '16px',   // theme.spacing(2) 相当
-  marginBottom: '16px' // theme.spacing(2) 相当
+  marginTop: '16px',
+  marginBottom: '16px',
 });
 
 const TagContainer = styled(Box)({
   display: 'flex',
   flexWrap: 'wrap',
-  gap: '8px', // theme.spacing(1) 相当
-  marginTop: '16px' // theme.spacing(2) 相当
+  gap: '8px',
+  marginTop: '16px',
 });
 
 const Tag = styled(Box)({
-  padding: '4px 8px', // theme.spacing(0.5, 1) 相当
+  padding: '4px 8px',
   backgroundColor: '#1976d2',
   color: '#ffffff',
-  borderRadius: '4px'
+  borderRadius: '4px',
 });
 
-const PostEditor = ({ user }) => {
+const PostEditPage = ({ user }) => {
+  const { id } = useParams();  // 投稿IDを取得
+  const navigate = useNavigate();
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState([]);
@@ -39,39 +39,50 @@ const PostEditor = ({ user }) => {
   const [original, setOriginal] = useState(null);
   const [adultContent, setAdultContent] = useState(null);
 
-  const [series, setSeries] = useState('');
-  const [seriesList, setSeriesList] = useState([]);
-  const [openModal, setOpenModal] = useState(false);
-
   const [charCount, setCharCount] = useState(0);
   const [descCharCount, setDescCharCount] = useState(0);
-  const navigate = useNavigate();
-  const author = user ? user._id : null;
+
   useEffect(() => {
-    const fetchSeries = async () => {
+    const fetchPostDetails = async () => {
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch('http://localhost:5000/api/series', {
+        const response = await fetch(`http://localhost:5000/api/posts/${id}/edit`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
         if (response.ok) {
-          const seriesData = await response.json();
-          setSeriesList(seriesData);
-        } else {
-          console.error('Failed to fetch series list');
-        }
+          const data = await response.json();
+          setTitle(data.title || '');
+          setContent(data.content || '');
+          setTags(data.tags || []);
+          setDescription(data.description || '');
+          setAiGenerated(data.isAI || false);
+          setOriginal(data.isOriginal || false);
+          setAdultContent(data.isAdultContent || false);
+          setCharCount(data.content ? data.content.replace(/<[^>]*>/g, '').length : 0);
+          setDescCharCount(data.description ? data.description.length : 0);
+        } else if (response.status === 302) {
+            const data = await response.json();
+            navigate(data.redirectUrl);
+          } else {
+            console.error('Failed to fetch post details');
+            navigate('/mypage'); // その他のエラー時にもマイページにリダイレクト
+          }
+
       } catch (error) {
-        console.error('Error fetching series:', error);
+        console.error('Error fetching post details:', error);
+        navigate('/mypage');
+
       }
     };
 
-    fetchSeries();
-  }, []);
+    fetchPostDetails();
+  }, [id]);
+
   const handleContentChange = (value) => {
     setContent(value);
-    setCharCount(value.replace(/<[^>]*>/g, '').length); // HTMLタグを除去して文字数をカウント
+    setCharCount(value.replace(/<[^>]*>/g, '').length);
   };
 
   const handleAddTag = () => {
@@ -85,18 +96,13 @@ const PostEditor = ({ user }) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleSubmit = async () => {
-    if (!title || !content || !description || tags.length === 0 || aiGenerated === null) {
+  const handleSave = async () => {
+    if (!title || !content || !description || tags.length === 0 || aiGenerated === null || original === null || adultContent === null) {
       alert('すべてのフィールドに入力してください。');
       return;
     }
-  
-    if (!user || !user._id) {
-      alert('ユーザー情報が見つかりません。再ログインしてください。');
-      return;
-    }
-  
-    const postData = {
+
+    const updatedPostData = {
       title,
       content,
       description,
@@ -105,90 +111,34 @@ const PostEditor = ({ user }) => {
       adultContent,
       aiGenerated,
       charCount,
-      author,  // author を含める
-      series: series || null, // 選択されたシリーズを含める
     };
-  
-    try {
-      const response = await fetch('http://localhost:5000/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(postData),
-      });
-  
-      if (response.ok) {
-        const post = await response.json();
-  
-   // シリーズが選択されている場合、そのシリーズに投稿を追加
-   if (series) {
-    await fetch(`http://localhost:5000/api/series/${series}/addPost`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-      },
-      body: JSON.stringify({ postId: post._id }),
-    });
-  }
 
-  
-        navigate('/');
-      } else {
-        alert('投稿に失敗しました。');
-      }
-    } catch (error) {
-      console.error('Error submitting post:', error);
-    }
-  };
-  
-  
-  const handleCreateSeries = async (seriesData) => {
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/series', {
+      const response = await fetch(`http://localhost:5000/api/posts/${id}/update`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify(seriesData),
+        body: JSON.stringify(updatedPostData),
       });
+
       if (response.ok) {
-        const newSeries = await response.json();
-        setSeriesList([...seriesList, newSeries]);
-        setSeries(newSeries._id);
-        setOpenModal(false);
+        alert('投稿が更新されました。');
+        navigate(`/mypage`);
       } else {
-        console.error('Failed to create series');
+        alert('投稿の更新に失敗しました。');
       }
     } catch (error) {
-      console.error('Error creating series:', error);
+      console.error('Error updating post:', error);
     }
   };
+
   return (
     <Box sx={{ maxWidth: 800, margin: 'auto', padding: 2 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        新規投稿
+        投稿編集
       </Typography>
-      <FormControl fullWidth margin="normal">
-        <InputLabel>シリーズ選択</InputLabel>
-        <Select
-          value={series}
-          onChange={(e) => setSeries(e.target.value)}
-        >
-          {seriesList.map((s) => (
-            <MenuItem key={s._id} value={s._id}>
-              {s.title}
-            </MenuItem>
-          ))}
-          <MenuItem value="" onClick={() => setOpenModal(true)}>
-            シリーズを新規作成
-          </MenuItem>
-        </Select>
-      </FormControl>
       <TextField
         label="タイトル"
         variant="outlined"
@@ -265,6 +215,7 @@ const PostEditor = ({ user }) => {
       <Typography variant="caption">
         {descCharCount}/3000
       </Typography>
+
       <Box mt={2}>
         <Typography>オリジナル作品ですか？</Typography>
         <FormControlLabel
@@ -276,6 +227,7 @@ const PostEditor = ({ user }) => {
           label="いいえ"
         />
       </Box>
+
       <Box mt={2}>
         <Typography>対象年齢</Typography>
         <FormControlLabel
@@ -287,6 +239,7 @@ const PostEditor = ({ user }) => {
           label="R18"
         />
       </Box>
+
       <Box mt={2}>
         <Typography>AIで作りましたか？</Typography>
         <FormControlLabel
@@ -300,17 +253,12 @@ const PostEditor = ({ user }) => {
       </Box>
 
       <Box mt={2} display="flex" justifyContent="flex-end">
-        <Button variant="contained" color="primary" onClick={handleSubmit}>
-          投稿
+        <Button variant="contained" color="primary" onClick={handleSave}>
+          保存
         </Button>
       </Box>
-      <SeriesCreationModal
-        open={openModal}
-        onClose={() => setOpenModal(false)}
-        onCreateSeries={handleCreateSeries}
-      />
     </Box>
   );
 };
 
-export default PostEditor;
+export default PostEditPage;

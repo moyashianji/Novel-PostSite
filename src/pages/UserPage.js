@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
-import { Typography, Box, Button, Avatar, Card, CardContent, Grid, IconButton, Link, Chip } from '@mui/material';
+import { Typography, Box, Button, Avatar, Grid, Chip, Link } from '@mui/material';
 import { styled } from '@mui/system';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import TwitterIcon from '@mui/icons-material/Twitter';
-import WebIcon from '@mui/icons-material/Web';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import SeriesCarousel from '../components/SeriesCarousel'; // 新しいコンポーネントをインポート
 
-const UserCard = styled(Card)(({ theme }) => ({
+const UserCard = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4),
   padding: theme.spacing(4),
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between', // フォローボタンを右側に配置
+  justifyContent: 'space-between',
   backgroundColor: theme.palette.background.paper,
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
   borderRadius: theme.shape.borderRadius,
 }));
 
-const WorkCard = styled(Card)(({ theme }) => ({
+const WorkCard = styled(Box)(({ theme }) => ({
   height: 250,
   display: 'flex',
   flexDirection: 'column',
@@ -34,7 +32,7 @@ const WorkCard = styled(Card)(({ theme }) => ({
   },
 }));
 
-const WorkCardContent = styled(CardContent)(({ theme }) => ({
+const WorkCardContent = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
@@ -56,6 +54,7 @@ const UserPage = () => {
   const { id } = useParams();
   const [user, setUser] = useState(null);
   const [works, setWorks] = useState([]);
+  const [series, setSeries] = useState([]);
   const [filteredWorks, setFilteredWorks] = useState([]);
   const [selectedTag, setSelectedTag] = useState('');
   const [isFollowing, setIsFollowing] = useState(false);
@@ -91,8 +90,19 @@ const UserPage = () => {
       }
     };
 
+    const fetchSeries = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/users/${id}/series`);
+        const data = await response.json();
+        setSeries(data);
+      } catch (error) {
+        console.error('Error fetching series:', error);
+      }
+    };
+
     fetchUserData();
     fetchWorks();
+    fetchSeries();
   }, [id]);
 
   const handleTagClick = (event, tag) => {
@@ -164,6 +174,9 @@ const UserPage = () => {
           {isFollowing ? 'フォロー解除' : 'フォロー'}
         </Button>
       </UserCard>
+
+      {/* シリーズ一覧 */}
+      <SeriesCarousel series={series} />  {/* SeriesCarouselコンポーネントを使用 */}
 
       {selectedTag && (
         <Box sx={{ mb: 2 }}>

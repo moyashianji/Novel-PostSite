@@ -12,6 +12,8 @@ import NovelDetail from './pages/NovelDetail'; // 追加
 import UserPage from './pages/UserPage'; // 追加
 import SearchPage from './pages/SearchPage'; // サーチページをインポート
 import SeriesEditPage from './pages/SeriesEditPage';
+import PostEditPage from './pages/PostEditPage';
+import WorksInSeries from './pages/WorksInSeries';
 
 const theme = createTheme();
 
@@ -78,7 +80,9 @@ function App() {
             />
             <Route path="/novel/:id" element={<NovelDetail />} /> {/* 作品詳細のルート */}
             <Route path="/user/:id" element={<UserPage />} /> {/* ユーザー詳細のルート */}
-            <Route path="/series/:id/edit" element={<SeriesEditPage />} />
+            <Route path="/mypage/series/:id/edit" element={<SeriesEditPage />} />
+            <Route path="/mypage/novel/:id/edit" element={<PostEditPage />} />
+            <Route path="/series/:id/works" element={<WorksInSeries />} />  {/* ここにルートを追加 */}
 
           </Routes>
         </Layout>

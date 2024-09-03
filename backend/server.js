@@ -102,12 +102,67 @@ const addMissingFields = async () => {
 
 // サーバー起動時にフィールド追加処理を実行
 addMissingFields();
+app.get('/api/series/:id/works', async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+
+    // シリーズを取得し、その中の投稿をpopulateして取得
+    const series = await Series.findById(seriesId).populate('posts.postId');
+
+    if (!series) {
+      console.log('Series not found:', seriesId);
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    console.log('Series found:', series);
+
+    // シリーズ内の投稿情報を取得して整理
+    const works = series.posts
+      .filter(post => {
+        const hasPostId = !!post.postId;
+        console.log(`Processing post: ${post._id}, hasPostId: ${hasPostId}`);
+        return hasPostId;  // postIdが存在するか確認
+      })
+      .map(post => ({
+        _id: post.postId._id,
+        title: post.postId.title,
+        description: post.postId.description,
+        episodeNumber: post.episodeNumber,
+      }));
+
+    console.log('Works in series:', works);
+    res.status(200).json(works);
+  } catch (error) {
+    console.error('Error fetching works in series:', error);
+    res.status(500).json({ message: '作品一覧の取得に失敗しました。', error });
+  }
+});
+
+// ユーザーのシリーズ一覧を取得するエンドポイント
+app.get('/api/users/:id/series', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const series = await Series.find({ author: userId });
+
+    if (!series) {
+      return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
+    }
+
+    res.status(200).json(series);
+  } catch (error) {
+    console.error('Error fetching series:', error);
+    res.status(500).json({ message: 'シリーズの取得に失敗しました。', error });
+  }
+});
 
 // 特定の投稿の詳細を取得するエンドポイント
 app.get('/api/posts/:id/edit', authenticateToken, async (req, res) => {
   try {
     const postId = req.params.id;
-    const post = await Post.findById(postId);
+    const userId = req.user._id; // 認証されたユーザーのIDを取得
+
+    // 投稿を探し、かつその投稿のauthorが現在のユーザーであるかを確認
+    const post = await Post.findOne({ _id: postId, author: userId });
 
     if (!post) {
       return res.status(404).json({ message: '投稿が見つかりませんでした。' });
@@ -116,10 +171,9 @@ app.get('/api/posts/:id/edit', authenticateToken, async (req, res) => {
     res.status(200).json(post);
   } catch (error) {
     console.error('Error fetching post details:', error);
-    res.status(500).json({ message: '投稿の取得に失敗しました。' });
+    res.status(500).json({ message: '投稿の取得に失敗しました。', error });
   }
 });
-
 // 特定の投稿を更新するエンドポイント
 app.post('/api/posts/:id/update', authenticateToken, async (req, res) => {
   try {
@@ -440,8 +494,14 @@ app.post('/api/series/:id/addPost', authenticateToken, async (req, res) => {
     }
 
     // Post モデルの series フィールドにシリーズIDを追加
-    await Post.findByIdAndUpdate(postId, { $addToSet: { series: seriesId } }, { new: true, runValidators: false });
-
+    // Post モデルの series フィールドを更新
+    const post = await Post.findById(postId);
+    if (post) {
+      post.series = seriesId;
+      await post.save();
+    } else {
+      return res.status(404).json({ message: '作品が見つかりませんでした。' });
+    }
     res.status(200).json({ message: '作品がシリーズに追加されました。' });
   } catch (error) {
     console.error('Error adding post to series:', error);

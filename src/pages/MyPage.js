@@ -193,7 +193,7 @@ const MyPage = () => {
     navigate(`/novel/${novelId}`, { state: { scrollTo: position } });
   };
   const handleEditClick = (workId) => {
-    navigate(`/novel/${workId}/edit`);
+    navigate(`/mypage/novel/${workId}/edit`);
   };
   const truncateText = (text, maxLength) => {
     return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
@@ -275,7 +275,7 @@ const MyPage = () => {
                     <Button 
                       variant="contained" 
                       color="primary" 
-                      onClick={() => navigate(`/series/${seriesItem._id}/edit`)}
+                      onClick={() => navigate(`/mypage/series/${seriesItem._id}/edit`)}
                     >
                       シリーズを編集
                     </Button>

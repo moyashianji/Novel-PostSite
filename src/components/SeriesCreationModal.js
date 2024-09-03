@@ -48,7 +48,7 @@ const SeriesCreationModal = ({ open, onClose, onCreateSeries }) => {
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Box sx={{ width: 400, padding: 4, margin: 'auto', backgroundColor: 'white', mt: '10%', overflowY: 'auto', maxHeight: '80vh' }}>
+      <Box sx={{ width: 400, padding: 4, margin: 'auto', backgroundColor: 'white', mt: '5%', overflowY: 'auto', maxHeight: '70vh' }}>
         <Typography variant="h6" gutterBottom>シリーズ作成</Typography>
         <TextField
           label="タイトル"
