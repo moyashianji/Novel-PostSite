@@ -39,7 +39,7 @@ const MyPage = () => {
   const fetchMyWorks = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/user/me/works', {
+      const response = await fetch('http://localhost:5000/api/users/me/works', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -59,7 +59,7 @@ const MyPage = () => {
   const fetchMySeries = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/user/me/series', {
+      const response = await fetch('http://localhost:5000/api/users/me/series', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -79,7 +79,7 @@ const MyPage = () => {
   const fetchFollowingList = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/user/following', {
+      const response = await fetch('http://localhost:5000/api/users/following', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -99,7 +99,7 @@ const MyPage = () => {
   const fetchFollowerList = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/user/followers', {
+      const response = await fetch('http://localhost:5000/api/users/followers', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -119,7 +119,7 @@ const MyPage = () => {
   const fetchLikedPosts = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/user/liked', {
+      const response = await fetch('http://localhost:5000/api/posts/user/liked', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -139,7 +139,7 @@ const MyPage = () => {
   const fetchBookshelf = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/user/bookshelf', {
+      const response = await fetch('http://localhost:5000/api/me/bookshelf', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -159,7 +159,7 @@ const MyPage = () => {
   const fetchBookmarks = async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/api/user/bookmarks', {
+      const response = await fetch('http://localhost:5000/api/me/bookmarks', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

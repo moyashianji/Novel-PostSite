@@ -184,7 +184,7 @@ const NovelDetail = () => {
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/users/bookmark`, {
+        const response = await fetch(`http://localhost:5000/api/me/bookmark`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

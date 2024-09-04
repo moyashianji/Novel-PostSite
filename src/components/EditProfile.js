@@ -55,7 +55,7 @@ const EditProfile = ({ user, onProfileUpdate }) => {
   
     try {
       const token = localStorage.getItem('token'); // JWTトークンを取得
-      const response = await fetch(`http://localhost:5000/api/user/${user._id}/update`, {
+      const response = await fetch(`http://localhost:5000/api/users/${user._id}/update`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`, // 認証トークンをヘッダーに追加
