@@ -1,9 +1,14 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String, 
+    required: true 
+  },
+    
   nickname: { type: String, required: true },
   icon: { type: String}, // アイコン画像のURLを保存
   dob: { type: Date, required: true },
@@ -29,6 +34,21 @@ const userSchema = new mongoose.Schema({
   ],
   bookShelf: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }], // 本棚に追加されたポスト
 
+}, {
+  toJSON: {
+    transform: function (doc, ret) {
+      delete ret?.password;  // パスワードを常に削除
+      delete ret?.email;  // パスワードを常に削除
+      delete ret?.dob;  // パスワードを常に削除
+      delete ret?.gender;  // パスワードを常に削除
+      delete ret?.likedPosts;  // パスワードを常に削除
+      delete ret?.following;  // パスワードを常に削除
+      delete ret?.bookmarks;  // パスワードを常に削除
+      delete ret?.bookShelf;  // パスワードを常に削除
+
+      return ret;
+    }
+  }
 }, { timestamps: true });
 
 
