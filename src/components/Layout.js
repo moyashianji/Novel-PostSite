@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppBar, Toolbar, IconButton, Typography, InputBase, Button, Box, Badge, Container, Grid } from '@mui/material';
 import { Search as SearchIcon, Notifications as NotificationsIcon } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
@@ -47,10 +47,46 @@ const Layout = ({ children, auth, setAuth }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setAuth(false);
-    navigate('/login'); // ログアウト後にログイン画面に遷移
+  // クライアント側でクッキーをチェックして認証状態を管理する
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/check-auth', {
+          method: 'GET',
+          credentials: 'include',  // クッキーを含めて送信
+        });
+        if (response.ok) {
+          setAuth(true);
+          console.error('Auth check success');
+
+        } else {
+          setAuth(false);
+          console.error('Auth check failed');
+
+        }
+      } catch (error) {
+        console.error('Auth check failed', error);
+        setAuth(false);
+      }
+    };
+    checkAuth();
+  }, [setAuth]);
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/logout', {
+        method: 'POST',
+        credentials: 'include', // クッキーを含めて送信
+      });
+      if (response.ok) {
+        setAuth(false);
+        navigate('/login'); // ログアウト後にログイン画面に遷移
+      } else {
+        console.error('Logout failed',response);
+      }
+    } catch (error) {
+      console.error('Error logging out', error);
+    }
   };
 
   const handleSearch = () => {

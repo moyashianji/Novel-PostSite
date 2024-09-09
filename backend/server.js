@@ -12,6 +12,8 @@ const dotenv = require('dotenv');
 const crypto = require('crypto');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
+const cookieParser = require('cookie-parser');  // cookie-parser をインポート
+
 //モデルのインポート
 const User = require('./models/User');
 const Post = require('./models/Post');
@@ -63,6 +65,8 @@ app.use(session({
     sameSite: 'lax'  // 'strict'を'lax'に変更してみる
   }
 }));
+// cookie-parser をミドルウェアとして追加
+app.use(cookieParser());
 
 app.use(express.json());
 

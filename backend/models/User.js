@@ -8,7 +8,9 @@ const userSchema = new mongoose.Schema({
   password: { type: String, 
     required: true 
   },
-    
+  resetPasswordToken: { type: String }, // パスワードリセット用のトークン
+  resetPasswordExpires: { type: Date }, // トークンの有効期限
+  
   nickname: { type: String, required: true },
   icon: { type: String}, // アイコン画像のURLを保存
   dob: { type: Date, required: true },

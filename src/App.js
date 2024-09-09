@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate,useParams } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -14,13 +14,15 @@ import SearchPage from './pages/SearchPage'; // サーチページをインポ�
 import SeriesEditPage from './pages/SeriesEditPage';
 import PostEditPage from './pages/PostEditPage';
 import WorksInSeries from './pages/WorksInSeries';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 const theme = createTheme();
 
 function App() {
   const [auth, setAuth] = useState(false);
   const [user, setUser] = useState(null);
-
+// パラメータで受け取ったトークンを使って、パスワードリセットリクエストをサーバーに送信
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -70,6 +72,11 @@ function App() {
               path="/signup" 
               element={<SignUp />} 
             />
+            <Route
+              path="/forgot-password"
+              element={<ForgotPassword />}
+            />        
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route 
               path="/register" 
               element={<Register />} 

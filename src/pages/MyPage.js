@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, Grid, Typography, Card,Chip, CardContent, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ProfileInfo from '../components/ProfileInfo';
+import Cookies from 'js-cookie';  // クッキーを操作するためのライブラリ
 
 const MyPage = () => {
   const [user, setUser] = useState(null);
@@ -15,14 +16,26 @@ const MyPage = () => {
   const [displayedContent, setDisplayedContent] = useState('works');
   
   const navigate = useNavigate();
+  // JWTをクッキーから取得
+  const getTokenFromCookies = () => {
+    const token = Cookies.get('token');
+    
+    // デバッグメッセージ
+    if (!token) {
+      console.error('Token not found in cookies');
+    } else {
+      console.log('Token found:', token);
+    }
+    
+    return token;
+  };
 
   const fetchUserData = async () => {
-    const token = localStorage.getItem('token');
+
     try {
       const response = await fetch('http://localhost:5000/api/user/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',  // クッキーを含めてリクエストを送信
+
       });
 
       if (response.ok) {
@@ -37,12 +50,11 @@ const MyPage = () => {
   };
 
   const fetchMyWorks = async () => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/users/me/works', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+
+        credentials: 'include',  // クッキーを含めてリクエストを送信
+
       });
 
       if (response.ok) {
