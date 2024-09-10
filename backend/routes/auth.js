@@ -82,6 +82,25 @@ const verifyTooManyLoginRecaptcha = async (recaptchaToken) => {
   return data.success;
 };
 
+// ReCAPTCHA検証
+const verifyForgotPassReCAPTCHA = async (token) => {
+  const secret = process.env.RECAPTCHA_SECRET;
+  const response = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`, {
+    method: 'POST',
+  });
+  const data = await response.json();
+  return data.success;
+};
+
+const verifyResetPasswordRecaptcha = async (recaptchaToken) => {
+  const secretKey = process.env.RECAPTCHA_SECRET;
+  const response = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptchaToken}`, {
+    method: 'POST',
+  });
+  const data = await response.json();
+  return data.success;
+};
+
 // パスワードリセットトークンの生成
 const generateResetToken = () => {
   // 32バイトのランダムな値を生成し、16進数で返す
@@ -354,15 +373,6 @@ const resetLimiter = rateLimit({
   message: 'Too many reset attempts, please try again later.',
 });
 
-// ReCAPTCHA検証
-const verifyForgotPassReCAPTCHA = async (token) => {
-  const secret = process.env.RECAPTCHA_SECRET;
-  const response = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`, {
-    method: 'POST',
-  });
-  const data = await response.json();
-  return data.success;
-};
 // パスワードリセットのリクエスト
 router.post('/forgot-password', resetLimiter, async (req, res) => {
   const { email, recaptchaToken } = req.body;
@@ -417,16 +427,26 @@ router.post('/forgot-password', resetLimiter, async (req, res) => {
 });
 
 // パスワードリセットの処理
-router.post('/reset-password:token', [
+router.post('/reset-password/:token', [
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('confirmPassword').custom((value, { req }) => value === req.body.password)
+  .withMessage('パスワード確認が一致しません'),
 ], async (req, res) => {
   const { token } = req.params;  // URLからトークンを取得
+  const { password,  recaptchaToken } = req.body;
+ 
+  // ReCAPTCHA検証
+  const recaptchaVerified = await verifyResetPasswordRecaptcha(recaptchaToken);
+  if (!recaptchaVerified) {
+    return res.status(400).json({ message: 'ReCAPTCHA verification failed' });
+  }
 
-  const { password } = req.body;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+
     return res.status(400).json({ errors: errors.array() });
   }
+
 
   try {
     const user = await User.findOne({
@@ -435,7 +455,7 @@ router.post('/reset-password:token', [
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Password reset token is invalid or has expired' });
+      return res.status(400).json({ message: '無効または期限切れのトークンを使用しています。' });
     }
 
     // パスワードをハッシュ化して更新
@@ -447,6 +467,7 @@ router.post('/reset-password:token', [
     await user.save();
 
     res.status(200).json({ message: 'Password has been updated' });
+
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
