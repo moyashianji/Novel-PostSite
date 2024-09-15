@@ -36,6 +36,7 @@ const bookshelfRoutes = require('./routes/bookshelf');
 const tagRoutes = require('./routes/tags');
 
 const app = express();
+app.disable("x-powered-by");
 
 // セキュリティ強化: Helmetによるセキュリティヘッダーの設定
 // Helmetの設定をカスタマイズ

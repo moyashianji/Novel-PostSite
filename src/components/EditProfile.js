@@ -27,6 +27,7 @@ const EditProfile = ({ user, onProfileUpdate }) => {
   const [pixivLink, setPixivLink] = useState(user.pixivLink || '');
   const [otherLink, setOtherLink] = useState(user.otherLink || '');
   const [charCount, setCharCount] = useState(description.length);
+  const [errorMessages, setErrorMessages] = useState({});
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -34,14 +35,26 @@ const EditProfile = ({ user, onProfileUpdate }) => {
   const handleIconChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setIcon(file); // ファイルオブジェクトをセット
-      setPreview(URL.createObjectURL(file)); // 新しい画像が選択された場合、その画像をプレビューに表示
+      if (file.size > 2 * 1024 * 1024) {
+        setErrorMessages({ general: 'ファイルサイズは2MB以下にしてください' });
+        return;
+      }
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        setErrorMessages({ general: '無効なファイル形式です。jpeg, png, gifのみ許可されています' });
+        return;
+      }
+
+      setIcon(file);
+      setErrorMessages({ general: '' });
+
+      setPreview(URL.createObjectURL(file));
     }
   };
 
   const handleSave = async () => {
     if (!nickname) {
-      alert('Nickname is required');
+      alert('ニックネームが必要です');
       return;
     }
   
@@ -54,23 +67,20 @@ const EditProfile = ({ user, onProfileUpdate }) => {
     formData.append('otherLink', otherLink);
   
     try {
-      const token = localStorage.getItem('token'); // JWTトークンを取得
       const response = await fetch(`http://localhost:5000/api/users/${user._id}/update`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`, // 認証トークンをヘッダーに追加
-        },
+        credentials: 'include',  
         body: formData,
       });
+      console.log(user._id);
       if (response.ok) {
         const updatedUser = await response.json();
         onProfileUpdate(updatedUser);
         handleClose();
       } else {
-        alert('Failed to update profile');
+        alert('プロフィールの更新に失敗しました');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
     }
   };
 
@@ -85,6 +95,7 @@ const EditProfile = ({ user, onProfileUpdate }) => {
               <CloseIcon />
             </IconButton>
           </Box>
+  
           <TextField
             label="Nickname"
             variant="outlined"
@@ -93,10 +104,22 @@ const EditProfile = ({ user, onProfileUpdate }) => {
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
           />
+  
           <Button variant="contained" component="label">
-            Upload Icon
-            <input type="file" hidden onChange={handleIconChange} />
+            アイコンを更新する
+            <input
+              accept="image/png, image/jpeg, image/gif"
+              style={{ display: 'none' }}
+              type="file"
+              onChange={handleIconChange}
+            />
           </Button>
+  
+          {/* 画像の制限に関するメッセージを表示 */}
+          <Typography variant="body2" color="textSecondary" mt={1}>
+            画像容量は2MB以内で、対応形式はPNG/JPG/GIFです
+          </Typography>
+  
           {preview && (
             <Box display="flex" justifyContent="center" mt={2}>
               <Avatar
@@ -106,6 +129,7 @@ const EditProfile = ({ user, onProfileUpdate }) => {
               />
             </Box>
           )}
+  
           <TextField
             label="Description"
             variant="outlined"
@@ -120,9 +144,9 @@ const EditProfile = ({ user, onProfileUpdate }) => {
             }}
             inputProps={{ maxLength: 300 }}
           />
-          <Typography variant="caption">
-            {charCount}/300
-          </Typography>
+          <Typography variant="caption">{charCount}/300</Typography>
+  
+          {/* X Linkに対するバリデーション */}
           <TextField
             label="X Link"
             variant="outlined"
@@ -130,7 +154,11 @@ const EditProfile = ({ user, onProfileUpdate }) => {
             margin="normal"
             value={xLink}
             onChange={(e) => setXLink(e.target.value)}
+            inputProps={{ pattern: 'https?://.*' }} // リンク以外を無効にする
+            helperText="http://またはhttps://で始まるリンクを入力してください"
           />
+  
+          {/* Pixiv Linkに対するバリデーション */}
           <TextField
             label="Pixiv Link"
             variant="outlined"
@@ -138,7 +166,11 @@ const EditProfile = ({ user, onProfileUpdate }) => {
             margin="normal"
             value={pixivLink}
             onChange={(e) => setPixivLink(e.target.value)}
+            inputProps={{ pattern: 'https?://.*' }} // リンク以外を無効にする
+            helperText="http://またはhttps://で始まるリンクを入力してください"
           />
+  
+          {/* Other Linkに対するバリデーション */}
           <TextField
             label="Other Link"
             variant="outlined"
@@ -146,10 +178,23 @@ const EditProfile = ({ user, onProfileUpdate }) => {
             margin="normal"
             value={otherLink}
             onChange={(e) => setOtherLink(e.target.value)}
+            inputProps={{ pattern: 'https?://.*' }} // リンク以外を無効にする
+            helperText="http://またはhttps://で始まるリンクを入力してください"
           />
+  
+          {errorMessages.general && (
+            <Typography color="error" variant="body2">
+              {errorMessages.general}
+            </Typography>
+          )}
+  
           <Box mt={2} display="flex" justifyContent="space-between">
-            <Button variant="contained" color="primary" onClick={handleSave}>Save</Button>
-            <Button variant="outlined" onClick={handleClose}>Cancel</Button>
+            <Button variant="contained" color="primary" onClick={handleSave}>
+              保存
+            </Button>
+            <Button variant="outlined" onClick={handleClose}>
+              キャンセル
+            </Button>
           </Box>
         </ModalBox>
       </Modal>

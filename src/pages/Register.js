@@ -108,16 +108,16 @@ const Register = () => {
     setRecaptchaVerified(false);
     alert('ReCAPTCHAの有効期限が切れました。再度確認をお願いします。');
   };
-// パスワード強度の評価を適切に初期化・設定するための変更
-const handlePasswordChange = (e) => {
-  const newPassword = e.target.value;
-  setPassword(newPassword);
+  // パスワード強度の評価を適切に初期化・設定するための変更
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
 
-  const result = zxcvbn(newPassword);
+    const result = zxcvbn(newPassword);
 
-  // zxcvbnのscoreは0〜4の範囲で返されるが、万一のために範囲外の場合の処理
-  setPasswordStrength(result ? Math.min(result.score, 3) : 0); 
-};
+    // zxcvbnのscoreは0〜4の範囲で返されるが、万一のために範囲外の場合の処理
+    setPasswordStrength(result ? Math.min(result.score, 3) : 0); 
+  };
   // Step1: 仮登録（確認コード送信）
   const handleNextStep = async () => {
     const errors = {};
@@ -453,7 +453,10 @@ const handlePasswordChange = (e) => {
       />
       <label htmlFor="icon-button-file">
         <IconButton color="primary" component="span">
-          <Avatar src={preview || ''} alt="icon preview" />
+          <Avatar
+           src={preview || ''}
+           alt="icon preview"
+          />
         </IconButton>
       </label>
     </Box>

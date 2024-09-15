@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, Grid, Typography, Card,Chip, CardContent, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ProfileInfo from '../components/ProfileInfo';
-import Cookies from 'js-cookie';  // クッキーを操作するためのライブラリ
 
 const MyPage = () => {
   const [user, setUser] = useState(null);
@@ -16,19 +15,7 @@ const MyPage = () => {
   const [displayedContent, setDisplayedContent] = useState('works');
   
   const navigate = useNavigate();
-  // JWTをクッキーから取得
-  const getTokenFromCookies = () => {
-    const token = Cookies.get('token');
-    
-    // デバッグメッセージ
-    if (!token) {
-      console.error('Token not found in cookies');
-    } else {
-      console.log('Token found:', token);
-    }
-    
-    return token;
-  };
+
 
   const fetchUserData = async () => {
 
@@ -53,7 +40,7 @@ const MyPage = () => {
     try {
       const response = await fetch('http://localhost:5000/api/users/me/works', {
 
-        credentials: 'include',  // クッキーを含めてリクエストを送信
+        credentials: 'include',  
 
       });
 
@@ -69,12 +56,10 @@ const MyPage = () => {
     }
   };
   const fetchMySeries = async () => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/users/me/series', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',  
+
       });
 
       if (response.ok) {
@@ -89,12 +74,10 @@ const MyPage = () => {
     }
   };
   const fetchFollowingList = async () => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/users/following', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',  
+
       });
       if (response.ok) {
         const data = await response.json();
@@ -109,12 +92,10 @@ const MyPage = () => {
   };
 
   const fetchFollowerList = async () => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/users/followers', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',  
+
       });
       if (response.ok) {
         const data = await response.json();
@@ -129,12 +110,10 @@ const MyPage = () => {
   };
 
   const fetchLikedPosts = async () => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/posts/user/liked', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',  
+
       });
       if (response.ok) {
         const data = await response.json();
@@ -149,12 +128,10 @@ const MyPage = () => {
   };
 
   const fetchBookshelf = async () => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/me/bookshelf', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',  
+
       });
       if (response.ok) {
         const data = await response.json();
@@ -169,12 +146,10 @@ const MyPage = () => {
   };
 
   const fetchBookmarks = async () => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/me/bookmarks', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',  
+
       });
       if (response.ok) {
         const data = await response.json();

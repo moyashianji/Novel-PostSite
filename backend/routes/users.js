@@ -39,14 +39,22 @@ router.get('/:userId([0-9a-fA-F]{24})/works', async (req, res) => {
   }
 });
 
+const path = require('path');
+const fs = require('fs');
+
 router.post('/:id([0-9a-fA-F]{24})/update', authenticateToken, upload.single('icon'), async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`User ID: ${id}`);
+
     // 既存ユーザー情報を取得
     const user = await User.findById(id);
     if (!user) {
+      console.log('User not found');
       return res.status(404).json({ message: 'User not found' });
     }
+
+    console.log('User found:', user);
 
     // 更新データの準備
     const updateData = {
@@ -57,14 +65,21 @@ router.post('/:id([0-9a-fA-F]{24})/update', authenticateToken, upload.single('ic
       otherLink: req.body.otherLink || "",      // デフォルト値を設定
     };
 
+    console.log('Update data:', updateData);
+
     // アイコンがアップロードされた場合は、iconフィールドを追加
     if (req.file) {
+      console.log('Icon file uploaded:', req.file);
+
       // 古いアイコンを削除
       if (user.icon && user.icon !== `/uploads/default.png`) { // デフォルト画像は削除しない
-        const oldIconPath = path.join(__dirname, user.icon);
+        const oldIconPath = path.join(__dirname, '..', 'uploads', path.basename(user.icon));  // 修正されたパス
+        console.log('Old icon path:', oldIconPath);
         fs.unlink(oldIconPath, (err) => {
           if (err) {
             console.error('Failed to delete old icon:', err);
+          } else {
+            console.log('Old icon deleted successfully');
           }
         });
       }
@@ -72,11 +87,14 @@ router.post('/:id([0-9a-fA-F]{24})/update', authenticateToken, upload.single('ic
       // 新しいアイコンパスを更新データに追加
       updateData.icon = `/uploads/${req.file.filename}`;
     }
+
     // ユーザー情報の更新
     const updatedUser = await User.findByIdAndUpdate(id, updateData, { new: true, upsert: true });
+    console.log('Updated user:', updatedUser);
 
     res.json(updatedUser); // 更新されたユーザー情報を返す
   } catch (err) {
+    console.error('Error updating profile:', err); // エラーの詳細をログに出力
     res.status(500).json({ message: 'Error updating profile', error: err });
   }
 });
