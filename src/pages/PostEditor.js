@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, IconButton , MenuItem, Select, InputLabel, FormControl} from '@mui/material';
+import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, IconButton, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -42,6 +42,7 @@ const PostEditor = ({ user }) => {
   const [series, setSeries] = useState('');
   const [seriesList, setSeriesList] = useState([]);
   const [openModal, setOpenModal] = useState(false);
+  const [imageCount, setImageCount] = useState(0); // 追加: 画像の枚数管理
 
   const [charCount, setCharCount] = useState(0);
   const [descCharCount, setDescCharCount] = useState(0);
@@ -49,12 +50,10 @@ const PostEditor = ({ user }) => {
   const author = user ? user._id : null;
   useEffect(() => {
     const fetchSeries = async () => {
-      const token = localStorage.getItem('token');
       try {
         const response = await fetch('http://localhost:5000/api/series', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          credentials: 'include',  // セッションを含めてリクエストを送信
+
         });
         if (response.ok) {
           const seriesData = await response.json();
@@ -73,7 +72,44 @@ const PostEditor = ({ user }) => {
     setContent(value);
     setCharCount(value.replace(/<[^>]*>/g, '').length); // HTMLタグを除去して文字数をカウント
   };
+  const handleImageUpload = (file) => {
+    if (file.size > 3 * 1024 * 1024) {
+      alert('画像のサイズは3MB以内にしてください。');
+      return;
+    }
 
+    const validTypes = ['image/png', 'image/jpeg'];
+    if (!validTypes.includes(file.type)) {
+      alert('無効な画像形式です。PNGまたはJPEGを選択してください。');
+      return;
+    }
+
+    if (imageCount >= 8) {
+      alert('画像は最大8枚までです。');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const range = this.quillRef.getEditor().getSelection();
+      this.quillRef.getEditor().clipboard.dangerouslyPasteHTML(range.index, `<img src="${reader.result}" alt="image"/>`);
+      setImageCount((prevCount) => prevCount + 1);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const imageHandler = () => {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/png, image/jpeg');
+    input.click();
+    input.onchange = () => {
+      const file = input.files[0];
+      if (file) {
+        handleImageUpload(file);
+      }
+    };
+  };
   const handleAddTag = () => {
     if (newTag && tags.length < 10) {
       setTags([...tags, newTag]);
@@ -90,12 +126,12 @@ const PostEditor = ({ user }) => {
       alert('すべてのフィールドに入力してください。');
       return;
     }
-  
+
     if (!user || !user._id) {
       alert('ユーザー情報が見つかりません。再ログインしてください。');
       return;
     }
-  
+
     const postData = {
       title,
       content,
@@ -108,33 +144,33 @@ const PostEditor = ({ user }) => {
       author,  // author を含める
       series: series || null, // 選択されたシリーズを含める
     };
-  
+
     try {
       const response = await fetch('http://localhost:5000/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
+        credentials: 'include',  // セッションを含めてリクエストを送信
         body: JSON.stringify(postData),
       });
-  
+
       if (response.ok) {
         const post = await response.json();
-  
-   // シリーズが選択されている場合、そのシリーズに投稿を追加
-   if (series) {
-    await fetch(`http://localhost:5000/api/series/${series}/addPost`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-      },
-      body: JSON.stringify({ postId: post._id }),
-    });
-  }
 
-  
+        // シリーズが選択されている場合、そのシリーズに投稿を追加
+        if (series) {
+          await fetch(`http://localhost:5000/api/series/${series}/addPost`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',  // セッションを含めてリクエストを送信
+            body: JSON.stringify({ postId: post._id }),
+          });
+        }
+
+
         navigate('/');
       } else {
         alert('投稿に失敗しました。');
@@ -143,17 +179,16 @@ const PostEditor = ({ user }) => {
       console.error('Error submitting post:', error);
     }
   };
-  
-  
+
+
   const handleCreateSeries = async (seriesData) => {
-    const token = localStorage.getItem('token');
     try {
       const response = await fetch('http://localhost:5000/api/series', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',  // セッションを含めてリクエストを送信
         body: JSON.stringify(seriesData),
       });
       if (response.ok) {
@@ -196,7 +231,10 @@ const PostEditor = ({ user }) => {
         margin="normal"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        inputProps={{ maxLength: 500 }}
+
       />
+      <Typography variant="contained" gutterBottom> {title.length}/500</Typography>
 
       <StyledQuill
         value={content}
@@ -220,9 +258,7 @@ const PostEditor = ({ user }) => {
         style={{ height: 300 }}
       />
 
-      <Typography variant="caption">
-        {charCount}/70000
-      </Typography>
+      <Typography variant="contained" gutterBottom> {charCount}/70000</Typography>
 
       <TextField
         label="タグ追加"
@@ -236,6 +272,8 @@ const PostEditor = ({ user }) => {
       <Button variant="contained" onClick={handleAddTag} disabled={tags.length >= 10}>
         タグ追加
       </Button>
+
+      <Typography variant="contained" gutterBottom> {tags.length}/10</Typography>
 
       <TagContainer>
         {tags.map((tag, index) => (
@@ -262,7 +300,7 @@ const PostEditor = ({ user }) => {
         }}
         inputProps={{ maxLength: 3000 }}
       />
-      <Typography variant="caption">
+      <Typography variant="contained" gutterBottom>
         {descCharCount}/3000
       </Typography>
       <Box mt={2}>

@@ -59,7 +59,11 @@ const SeriesCreationModal = ({ open, onClose, onCreateSeries }) => {
           onChange={(e) => { setTitle(e.target.value); setTitleError(''); }}
           error={Boolean(titleError)}
           helperText={titleError}
+          inputProps={{ maxLength: 400 }}
+          
         />
+        <Typography variant="h6" gutterBottom>{title.length}/400</Typography>
+
         <TextField
           label="あらすじ"
           variant="outlined"
@@ -71,7 +75,11 @@ const SeriesCreationModal = ({ open, onClose, onCreateSeries }) => {
           onChange={(e) => { setDescription(e.target.value); setDescriptionError(''); }}
           error={Boolean(descriptionError)}
           helperText={descriptionError}
+          inputProps={{ maxLength: 2000 }}
+
         />
+        <Typography variant="h6" gutterBottom>{description.length}/2000</Typography>
+
         <TextField
           label="タグ追加"
           variant="outlined"
@@ -81,6 +89,8 @@ const SeriesCreationModal = ({ open, onClose, onCreateSeries }) => {
           onChange={(e) => setNewTag(e.target.value)}
           disabled={tags.length >= 10}
         />
+       <Typography variant="h6" gutterBottom>{tags.length}/10</Typography>
+
         <Button variant="contained" onClick={handleAddTag} disabled={tags.length >= 10}>
           タグ追加
         </Button>

@@ -24,33 +24,29 @@ function App() {
   const [user, setUser] = useState(null);
 // パラメータで受け取ったトークンを使って、パスワードリセットリクエストをサーバーに送信
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      setAuth(true);
-      fetchUserData(token);
-    }
-  }, []);
 
-  const fetchUserData = async (token) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/user/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else {
-        console.error('Failed to fetch user data');
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/user/me', {
+          credentials: 'include',  // セッションを含めてリクエストを送信
+        });
+  
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        } else {
+          console.error('Failed to fetch user data');
+          setAuth(false);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
         setAuth(false);
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setAuth(false);
-    }
-  };
+    };    
+    fetchUserData();
+  }, []);
+
+
 
   return (
     <ThemeProvider theme={theme}>
