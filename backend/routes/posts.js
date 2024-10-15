@@ -46,13 +46,57 @@ router.get('/ranking', async (req, res) => {
 // 投稿の一覧を取得
 router.get('/', async (req, res) => {
   try {
-    const posts = await Post.find().populate('author').exec();
-    res.json(posts);
+    // クエリパラメータからページ番号を取得。デフォルトは1ページ目。
+    const page = parseInt(req.query.page) || 1;
+    const postsPerPage = 20; // 1ページあたりの投稿数
+
+    // 投稿数をカウント
+    const totalPosts = await Post.countDocuments();
+
+    // 投稿を取得 (ページネーション対応)
+    const posts = await Post.find()
+      .populate('author')
+      .sort({ createdAt: -1 }) // 新しい投稿から順に取得
+      .skip((page - 1) * postsPerPage) // スキップする件数
+      .limit(postsPerPage); // 取得する件数を制限
+
+    // レスポンスとして投稿データと総投稿数を返す
+    res.json({
+      posts,
+      totalPosts,
+      totalPages: Math.ceil(totalPosts / postsPerPage), // 総ページ数を計算
+      currentPage: page,
+    });
   } catch (error) {
+    console.error('Error fetching posts:', error);
     res.status(500).json({ message: '投稿の取得に失敗しました。' });
   }
 });
+router.get('/tag/:tag', async (req, res) => {
+  try {
+    const { tag } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const postsPerPage = 10;  // 1ページに表示する投稿数
 
+    const totalPosts = await Post.countDocuments({ tags: tag });
+
+    const posts = await Post.find({ tags: tag })
+      .sort({ createdAt: -1 })  // 新しい順に取得
+      .skip((page - 1) * postsPerPage)
+      .limit(postsPerPage)
+      .populate('author');
+    console.log(posts)
+    res.json({
+      posts,
+      totalPosts,
+      totalPages: Math.ceil(totalPosts / postsPerPage),
+      currentPage: page,
+    });
+  } catch (error) {
+    console.error('Error fetching posts by tag:', error);
+    res.status(500).json({ message: 'タグに関連する投稿の取得に失敗しました。' });
+  }
+});
 // 特定の投稿を取得
 router.get('/:id([0-9a-fA-F]{24})', async (req, res) => {
   try {
