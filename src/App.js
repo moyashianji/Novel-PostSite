@@ -53,7 +53,7 @@ function App() {
       <Router>
         <Layout auth={auth} setAuth={setAuth}>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Home auth={auth}/>} />
             <Route path="/search" element={<SearchPage />} />
 
             <Route 

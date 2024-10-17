@@ -35,7 +35,14 @@ const userSchema = new mongoose.Schema({
     },
   ],
   bookShelf: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }], // 本棚に追加されたポスト
+  // その他のフィールド
+  tagContainers: [
+    {
+      tag: { type: String, required: true },
+      index: { type: Number, required: true }  // インデックスを明示的に保持
 
+    }
+  ]
 }, {
   toJSON: {
     transform: function (doc, ret) {
@@ -47,7 +54,7 @@ const userSchema = new mongoose.Schema({
       delete ret?.following;  // パスワードを常に削除
       delete ret?.bookmarks;  // パスワードを常に削除
       delete ret?.bookShelf;  // パスワードを常に削除
-
+      delete ret?.tagContainers;
       return ret;
     }
   }

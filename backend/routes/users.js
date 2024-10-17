@@ -251,5 +251,67 @@ router.get('/:id([0-9a-fA-F]{24})', async (req, res) => {
     res.status(500).json({ message: 'ユーザー情報の取得に失敗しました。' });
   }
 });
+router.get('/tags', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
+    // ユーザーのタグコンテナ（インデックス付き）を返す
+    res.json({ tagContainers: user.tagContainers });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching tags', error });
+  }
+});
+// サーバー側
+router.post('/tags', authenticateToken, async (req, res) => {
+  try {
+    const { index, tag } = req.body;
+    
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+
+    // タグコンテナにindexとtagを保存（既に存在する場合は上書き）
+    const tagContainer = { tag, index };
+    user.tagContainers[index] = tagContainer;
+    console.log(tagContainer)
+    await user.save();
+
+    res.status(200).json({ message: 'Tag saved successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving tag', error });
+  }
+});
+
+// routes/users.js
+router.delete('/tags/:index',authenticateToken, async (req, res) => {
+  const userId = req.user._id;  // 認証されたユーザーID
+  const indexToRemove = parseInt(req.params.index, 10);
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりませんでした' });
+    }
+
+    // 指定されたインデックスのタグを削除
+    user.tagContainers.splice(indexToRemove, 1);
+
+    // インデックスを詰めるために順番をリセット
+    user.tagContainers = user.tagContainers.map((container, index) => ({
+      ...container,
+      index,  // インデックスを詰めて再割り当て
+    }));
+
+    await user.save();  // 変更を保存
+    res.status(200).json({ message: 'タグが削除されました' });
+  } catch (error) {
+    console.error('Error removing tag:', error);
+    res.status(500).json({ message: 'タグの削除中にエラーが発生しました' });
+  }
+});
 module.exports = router;
