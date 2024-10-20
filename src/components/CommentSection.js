@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Button, TextField, Typography, Card, CardContent, Avatar, IconButton, Menu, MenuItem, Modal } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { styled } from '@mui/system';
-
-const BlurredCardContent = styled(CardContent)(({ blur }) => ({
-  filter: blur ? 'blur(4px)' : 'none',
-  transition: 'filter 0.5s ease',
-}));
 
 const ReportModal = ({ open, onClose, onSubmit }) => {
   const [reportText, setReportText] = useState('');
@@ -53,25 +47,61 @@ const ReportModal = ({ open, onClose, onSubmit }) => {
 const CommentSection = ({ postId }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
+  const [replyText, setReplyText] = useState(''); // 返信用テキスト
+  const [replyTarget, setReplyTarget] = useState(null); // 返信対象
   const [charCount, setCharCount] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedComment, setSelectedComment] = useState(null);
+  const [selectedReplyComment, setSelectedReplyComment] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalComments, setTotalComments] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [reportOpen, setReportOpen] = useState(false);
+  const [userId, setUserId] = useState(null); // ユーザーIDを保存するステート
+  const [loading, setLoading] = useState(false);
 
-  const fetchComments = async () => {
+  // ユーザー情報の取得
+  const fetchUserInfo = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments`);
+      const response = await fetch('http://localhost:5000/api/user/me', {
+        method: 'GET',
+        credentials: 'include', // 認証トークンを含める
+      });
       const data = await response.json();
-      setComments(data.reverse());
+      setUserId(data._id); // ユーザーIDをセット
+      console.log(data._id);
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserInfo(); // コンポーネントのマウント時にユーザー情報を取得
+  }, []);
+  const fetchComments = async (page = 1) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments?page=${page}&limit=5`);
+      const data = await response.json();
+      setComments(prevComments => [...prevComments, ...data.comments]);
+      setTotalComments(data.totalComments);
+      setTotalPages(data.totalPages);
+      setCurrentPage(data.currentPage);
     } catch (error) {
       console.error('Error fetching comments:', error);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchComments();
   }, [postId]);
+  const handleLoadMore = () => {
+    if (currentPage < totalPages) {
+      fetchComments(currentPage + 1);
+    }
+  };
 
   const handleCommentSubmit = async () => {
     if (newComment.trim() === '') {
@@ -80,25 +110,19 @@ const CommentSection = ({ postId }) => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('ログインが必要です');
-        return;
-      }
-
       const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ text: newComment }),
       });
 
       if (response.ok) {
         setNewComment('');
         setCharCount(0);
-        fetchComments(); // 投稿後にコメント一覧を再取得
+        fetchComments();
       } else {
         const errorData = await response.json();
         alert(errorData.message || 'コメントの追加に失敗しました。');
@@ -108,9 +132,47 @@ const CommentSection = ({ postId }) => {
     }
   };
 
-  const handleMenuOpen = (event, comment) => {
+  const handleReplySubmit = async (parentCommentId) => {
+    if (replyText.trim() === '') {
+      alert('返信を入力してください。');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${parentCommentId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ text: replyText }),
+      });
+
+      if (response.ok) {
+        setReplyText('');
+        setReplyTarget(null);
+        fetchComments();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || '返信の追加に失敗しました。');
+      }
+    } catch (error) {
+      console.error('Error adding reply:', error);
+    }
+  };
+
+  const handleMenuOpen = (event, comment, replyComment = null, replyOpen) => {
     setAnchorEl(event.currentTarget);
     setSelectedComment(comment);
+    console.log(comment)
+
+    if (replyComment) {
+      // 返信コメントが存在する場合は、返信コメントを選択
+      setSelectedReplyComment(replyComment);
+    } else {
+      // 返信がない場合、返信コメントの選択をクリア
+      setSelectedReplyComment(null);
+    }
   };
 
   const handleMenuClose = () => {
@@ -119,45 +181,52 @@ const CommentSection = ({ postId }) => {
   };
 
   const handleDeleteComment = async () => {
-    if (!selectedComment) return;
+    let isReply = false;
+    let commentId = selectedComment._id; // デフォルトは元コメントのID
+    let replyId = null;
 
+    if (selectedReplyComment) {
+      isReply = true;
+      replyId = selectedReplyComment._id; // 返信コメントのID
+    }
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('ログインが必要です');
-        return;
+      let url = `http://localhost:5000/api/posts/${postId}/comments/${commentId}`;
+      console.log(replyId)
+      // 返信を削除する場合、replyIdをクエリパラメータとして送信
+      if (isReply && replyId) {
+        url += `?replyId=${replyId}`;
       }
 
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${selectedComment._id}`, {
+      const response = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',  // 認証情報を含めてリクエスト
       });
 
       if (response.ok) {
-        setComments(comments.filter(comment => comment._id !== selectedComment._id));
+        if (isReply && replyId) {
+          // 返信を削除した場合の更新
+          setComments(comments.map(comment => {
+            if (comment._id === selectedComment._id) {
+              // spliceで状態から返信を削除
+              comment.replies = comment.replies.filter(reply => reply._id !== replyId);
+            }
+            return comment;
+          }));
+        } else {
+          // コメント自体を削除した場合
+          setComments(comments.filter(comment => comment._id !== selectedComment._id));
+        }
         handleMenuClose();
       } else {
-        alert('コメントの削除に失敗しました。');
+        alert('削除に失敗しました。');
       }
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      console.error('Error deleting comment or reply:', error);
     }
   };
 
-  const handleReportSubmit = (reportText) => {
-    console.log(`Reported: ${reportText}`);
-    handleReportClose();
-  };
-
-  const handleReportOpen = () => {
-    setReportOpen(true);
-    handleMenuClose();
-  };
-
-  const handleReportClose = () => {
-    setReportOpen(false);
+  const handleReplyClick = (comment) => {
+    setReplyTarget(comment);
   };
 
   return (
@@ -184,15 +253,15 @@ const CommentSection = ({ postId }) => {
         コメントを投稿
       </Button>
 
-      <Box sx={{ mt: 4 }}>
-        {comments.slice(0, 2).map((comment, index) => (
-          <Card key={comment._id} sx={{ mb: 2 }}>
-            <BlurredCardContent blur={!showComments}>
+      {comments.map((comment, index) => (
+        <Box key={comment._id} sx={{ mt: 2 }}>
+          <Card key={comment._id}>
+            <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Box display="flex" alignItems="center" mb={1}>
+                <Box display="flex" alignItems="center">
                   <Avatar src={`http://localhost:5000${comment.author.icon}`} alt={comment.author.nickname} sx={{ marginRight: 1 }} />
                   <Typography variant="body2" fontWeight="bold">
-                  {comment.author.nickname} #{index + 1}
+                    {comment.author.nickname}
                   </Typography>
                 </Box>
                 <IconButton onClick={(event) => handleMenuOpen(event, comment)}>
@@ -200,60 +269,77 @@ const CommentSection = ({ postId }) => {
                 </IconButton>
               </Box>
               <Typography variant="body1">{comment.text}</Typography>
-              <Typography variant="body2" color="textSecondary">
+              <Typography variant="body2" color="textSecondary" sx={{ px: 2 }}>
                 {new Date(comment.createdAt).toLocaleString()}
               </Typography>
-            </BlurredCardContent>
+              <Button variant="text" color="primary" onClick={() => handleReplyClick(comment)}>返信</Button>
+            </CardContent>
           </Card>
-        ))}
-      </Box>
 
-      {!showComments && comments.length > 2 && (
+          {comment.replies && comment.replies.length > 0 && (
+            <Box sx={{ ml: 4 }}>
+              {comment.replies.map((reply) => (
+                <Card key={`${comment._id}-${reply._id}`} sx={{ mt: 2 }}>
+                  <CardContent>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+
+                      <Box display="flex" alignItems="center">
+                        <Avatar src={`http://localhost:5000${reply.author.icon}`} alt={reply.author.nickname} sx={{ marginRight: 1 }} />
+                        <Typography variant="body2" fontWeight="bold">{reply.author.nickname}</Typography>
+                      </Box>
+                      <IconButton onClick={(event) => handleMenuOpen(event, comment, reply)}>
+                        <MoreVertIcon />
+                      </IconButton>
+                    </Box>
+
+                    <Typography variant="body1">{reply.text}</Typography>
+                    <Typography variant="body2" color="textSecondary" sx={{ px: 2 }}>
+                      {new Date(reply.createdAt).toLocaleString()}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          )}
+
+          {replyTarget?._id === comment._id && (
+            <Box sx={{ ml: 4, mt: 2 }}>
+              <TextField
+                label="返信を入力"
+                variant="outlined"
+                fullWidth
+                multiline
+                rows={2}
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+              <Button variant="contained" color="primary" onClick={() => handleReplySubmit(comment._id)}>返信を投稿</Button>
+            </Box>
+          )}
+        </Box>
+      ))}
+      {currentPage < totalPages && (
         <Box display="flex" justifyContent="center" mt={2}>
-          <Button variant="contained" color="primary" onClick={() => setShowComments(true)}>
-            コメントを表示
+          <Button variant="contained" color="primary" onClick={handleLoadMore} disabled={loading}>
+            {loading ? '読み込み中...' : 'さらに表示'}
           </Button>
         </Box>
       )}
-
-      {showComments && (
-        <Box sx={{ mt: 4 }}>
-          {comments.slice(2).map((comment, index) => (
-            <Card key={comment._id} sx={{ mb: 2 }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <Avatar src={`http://localhost:5000${comment.author.icon}`} alt={comment.author.nickname} sx={{ marginRight: 1 }} />
-                    <Typography variant="body2" fontWeight="bold">
-                      {comment.author.nickname} #{(index + 3)}
-                    </Typography>
-                  </Box>
-                  <IconButton onClick={(event) => handleMenuOpen(event, comment)}>
-                    <MoreVertIcon />
-                  </IconButton>
-                </Box>
-                <Typography variant="body1">{comment.text}</Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {new Date(comment.createdAt).toLocaleString()}
-                </Typography>
-              </CardContent>
-            </Card>
-          ))}
-        </Box>
-      )}
-
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        {selectedComment && selectedComment.author._id === localStorage.getItem('userId') && (
-          <MenuItem onClick={handleDeleteComment}>削除</MenuItem>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} >
+        {/* 元コメント削除メニュー */}
+        {selectedComment && !selectedReplyComment && selectedComment.author._id === userId && (
+          <MenuItem onClick={handleDeleteComment}>コメントを削除</MenuItem>
         )}
-        <MenuItem onClick={handleReportOpen}>通報</MenuItem>
+        {/* 返信削除メニュー */}
+        {selectedReplyComment && selectedReplyComment.author._id === userId && (
+          <MenuItem onClick={handleDeleteComment}>返信を削除</MenuItem>
+        )}
+        {console.log(selectedComment)}
+        <MenuItem onClick={() => setReportOpen(true)}>通報</MenuItem>
       </Menu>
 
-      <ReportModal open={reportOpen} onClose={handleReportClose} onSubmit={handleReportSubmit} />
+      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} onSubmit={(text) => console.log(`Reported: ${text}`)} />
     </Box>
   );
 };
