@@ -13,14 +13,15 @@ const MyPage = () => {
   const [bookshelf, setBookshelf] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [displayedContent, setDisplayedContent] = useState('works');
-  
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const navigate = useNavigate();
 
 
   const fetchUserData = async () => {
 
     try {
-      const response = await fetch('http://localhost:5000/api/user/me', {
+      const response = await fetch(`${API_URL}/api/user/me`, {
         credentials: 'include',  // クッキーを含めてリクエストを送信
 
       });
@@ -38,7 +39,7 @@ const MyPage = () => {
 
   const fetchMyWorks = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/me/works', {
+      const response = await fetch(`${API_URL}/api/users/me/works`, {
 
         credentials: 'include',  
 
@@ -57,7 +58,7 @@ const MyPage = () => {
   };
   const fetchMySeries = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/me/series', {
+      const response = await fetch(`${API_URL}/api/users/me/series`, {
         credentials: 'include',  
 
       });
@@ -75,7 +76,7 @@ const MyPage = () => {
   };
   const fetchFollowingList = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/following', {
+      const response = await fetch(`${API_URL}/api/users/following`, {
         credentials: 'include',  
 
       });
@@ -93,7 +94,7 @@ const MyPage = () => {
 
   const fetchFollowerList = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users/followers', {
+      const response = await fetch(`${API_URL}/api/users/followers`, {
         credentials: 'include',  
 
       });
@@ -111,7 +112,7 @@ const MyPage = () => {
 
   const fetchLikedPosts = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/posts/user/liked', {
+      const response = await fetch(`${API_URL}/api/posts/user/liked`, {
         credentials: 'include',  
 
       });
@@ -129,7 +130,7 @@ const MyPage = () => {
 
   const fetchBookshelf = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/me/bookshelf', {
+      const response = await fetch(`${API_URL}/api/me/bookshelf`, {
         credentials: 'include',  
 
       });
@@ -147,7 +148,7 @@ const MyPage = () => {
 
   const fetchBookmarks = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/me/bookmarks', {
+      const response = await fetch(`${API_URL}/api/me/bookmarks`, {
         credentials: 'include',  
 
       });
@@ -279,7 +280,7 @@ const MyPage = () => {
             onClick={() => handleCardClick(`/user/${user._id}`)}
           >
             <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
-              <Avatar src={`http://localhost:5000${user.icon}`} alt={user.nickname} sx={{ marginRight: 2 }} />
+              <Avatar src={`${API_URL}${user.icon}`} alt={user.nickname} sx={{ marginRight: 2 }} />
               <Box>
                 <Typography variant="subtitle1">{user.nickname}</Typography>
                 <Typography variant="body2" color="textSecondary">
@@ -297,7 +298,7 @@ const MyPage = () => {
             onClick={() => handleCardClick(`/user/${user._id}`)}
           >
             <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
-              <Avatar src={`http://localhost:5000${user.icon}`} alt={user.nickname} sx={{ marginRight: 2 }} />
+              <Avatar src={`${API_URL}${user.icon}`} alt={user.nickname} sx={{ marginRight: 2 }} />
               <Box>
                 <Typography variant="subtitle1">{user.nickname}</Typography>
                 <Typography variant="body2" color="textSecondary">

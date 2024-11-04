@@ -47,11 +47,13 @@ const PostEditor = ({ user }) => {
   const [charCount, setCharCount] = useState(0);
   const [descCharCount, setDescCharCount] = useState(0);
   const navigate = useNavigate();
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const author = user ? user._id : null;
   useEffect(() => {
     const fetchSeries = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/series', {
+        const response = await fetch(`${API_URL}/api/series`, {
           credentials: 'include',  // セッションを含めてリクエストを送信
 
         });
@@ -146,7 +148,7 @@ const PostEditor = ({ user }) => {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/posts', {
+      const response = await fetch(`${API_URL}/api/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,7 +162,7 @@ const PostEditor = ({ user }) => {
 
         // シリーズが選択されている場合、そのシリーズに投稿を追加
         if (series) {
-          await fetch(`http://localhost:5000/api/series/${series}/addPost`, {
+          await fetch(`${API_URL}/api/series/${series}/addPost`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -183,7 +185,7 @@ const PostEditor = ({ user }) => {
 
   const handleCreateSeries = async (seriesData) => {
     try {
-      const response = await fetch('http://localhost:5000/api/series', {
+      const response = await fetch(`${API_URL}/api/series`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

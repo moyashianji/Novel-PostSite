@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const session = require('express-session');
@@ -8,11 +8,9 @@ const nodemailer = require('nodemailer');
 const upload = require('../middlewares/upload');
 const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit')
-const fetch = require('node-fetch');
 const authenticateToken = require('../middlewares/authenticateToken');
 const crypto = require('crypto');
 
-require('dotenv').config();
 
 const router = express.Router();
 // ユーザーごとにログイン試行回数を追跡するためのストア

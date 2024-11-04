@@ -6,12 +6,14 @@ import PixivIcon from '@mui/icons-material/Pix';
 import LinkIcon from '@mui/icons-material/Link';
 
 const ProfileInfo = ({ user, onProfileUpdate }) => {
+  const API_URL = process.env.REACT_APP_API_URL;
+
   return (
     <Card sx={{ width: '100%', mb: 4 }}>
       <CardContent>
         <Box display="flex" alignItems="center" p={2}>
           <Avatar
-            src={`http://localhost:5000${user.icon}?${new Date().getTime()}`} // キャッシュバスターを追加
+            src={`${API_URL}${user.icon}?${new Date().getTime()}`} // キャッシュバスターを追加
             alt={user.nickname}
             sx={{ width: 80, height: 80, mr: 2 }}
           />

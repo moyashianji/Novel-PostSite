@@ -18,10 +18,14 @@ const ModalBox = styled(Box)(({ theme }) => ({
 }));
 
 const EditProfile = ({ user, onProfileUpdate }) => {
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const [open, setOpen] = useState(false);
   const [nickname, setNickname] = useState(user.nickname);
   const [icon, setIcon] = useState(null);
-  const [preview, setPreview] = useState(`http://localhost:5000${user.icon}` || '');
+
+
+  const [preview, setPreview] = useState(`${API_URL}${user.icon}` || '');
   const [description, setDescription] = useState(user.description || '');
   const [xLink, setXLink] = useState(user.xLink || '');
   const [pixivLink, setPixivLink] = useState(user.pixivLink || '');
@@ -84,7 +88,7 @@ const EditProfile = ({ user, onProfileUpdate }) => {
     formData.append('otherLink', otherLink);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${user._id}/update`, {
+      const response = await fetch(`${API_URL}/api/users/${user._id}/update`, {
         method: 'POST',
         credentials: 'include',
         body: formData,

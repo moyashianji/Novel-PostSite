@@ -12,6 +12,7 @@ const SeriesCreationModal = ({ open, onClose, onCreateSeries }) => {
   const [aiGenerated, setAiGenerated] = useState(false);
   const [titleError, setTitleError] = useState('');
   const [descriptionError, setDescriptionError] = useState('');
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const handleAddTag = () => {
     if (newTag && tags.length < 10) {

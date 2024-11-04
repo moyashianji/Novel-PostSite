@@ -25,11 +25,12 @@ const TagText = styled(ListItemText)(({ theme }) => ({
 const PopularTags = () => {
   const [tags, setTags] = useState([]);
   const navigate = useNavigate();
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/tags/popular');
+        const response = await fetch(`${API_URL}/api/tags/popular`);
         const data = await response.json();
         setTags(data);
       } catch (error) {

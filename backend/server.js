@@ -1,14 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const dotenv = require('dotenv');
 const crypto = require('crypto');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
@@ -56,7 +54,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: 'mongodb://localhost:27017/novel-site',
+    mongoUrl: 'mongodb://host.docker.internal:27017/novel-site',
     ttl: 24 * 60 * 60,  // セッションの有効期限（24時間）
   }),
   cookie: {
@@ -73,17 +71,16 @@ app.use(express.json());
 
 // CORS設定を適用
 app.use(cors({
-  origin: 'http://localhost:3000',  // フロントエンドのオリジンを許可
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true  // クレデンシャル（Cookieや認証情報）を許可
+  origin: ['http://localhost:3000'],  // 複数オリジンの許可
+  methods: ['GET', 'POST', 'PUT', 'DELETE','OPTIONS'],
+  credentials: true
 }));
-
 // Morgan + Winstonミドルウェアを使用
 app.use(morganMiddleware); // 追加
 
 // 静的ファイルにCORSヘッダーを追加
 app.use('/uploads', cors({
-  origin: 'http://localhost:3000',  // 静的ファイル配信に対してもCORSを許可
+  origin: ['http://localhost:3000'],  // 複数オリジンの許可
   credentials: true
 }), express.static(path.join(__dirname, 'uploads')));
 
@@ -93,7 +90,7 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-mongoose.connect('mongodb://localhost:27017/novel-site', {
+mongoose.connect('mongodb://host.docker.internal:27017/novel-site', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -101,7 +98,7 @@ mongoose.connect('mongodb://localhost:27017/novel-site', {
 .catch(err => console.error('MongoDB connection error:', err));
 // セッションストアのログを確認
 MongoStore.create({
-  mongoUrl: 'mongodb://localhost:27017/novel-site',
+  mongoUrl: 'mongodb://host.docker.internal:27017/novel-site',
   ttl: 24 * 60 * 60,
   autoRemove: 'native'
 }).on('error', function(error) {

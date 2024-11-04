@@ -11,11 +11,12 @@ const useQuery = () => {
 const SearchPage = () => {
   const query = useQuery().get('query');
   const [searchResults, setSearchResults] = useState([]);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchSearchResults = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/posts/search?query=${query}`);
+        const response = await fetch(`${API_URL}/api/posts/search?query=${query}`);
         const data = await response.json();
         setSearchResults(data);
       } catch (error) {

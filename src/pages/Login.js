@@ -9,6 +9,8 @@ const Login = ({ setAuth }) => {
   const [recaptchaToken, setRecaptchaToken] = useState(null); // reCAPTCHAトークンを追加
   const [captchaRequired, setCaptchaRequired] = useState(false); // CAPTCHAが必要かどうか
   const [isSubmitting, setIsSubmitting] = useState(false); // 送信中かどうか
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const navigate = useNavigate();
 
   const handleCaptchaChange = (token) => {
@@ -24,7 +26,7 @@ const Login = ({ setAuth }) => {
     // ボタン連打を防ぐための送信中フラグ設定
     setIsSubmitting(true);
 
-    const response = await fetch('http://localhost:5000/api/login', {
+    const response = await fetch(`${API_URL}/api/login`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

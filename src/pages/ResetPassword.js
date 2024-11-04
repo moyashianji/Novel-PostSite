@@ -16,6 +16,7 @@ const ResetPassword = () => {
   const [recaptchaToken, setRecaptchaToken] = useState('');
   const [recaptchaVerified, setRecaptchaVerified] = useState(false);
   const navigate = useNavigate();
+  const API_URL = process.env.REACT_APP_API_URL;
 
   // パスワード強度の評価を適切に初期化・設定するための変更
   const handlePasswordChange = (e) => {
@@ -59,7 +60,7 @@ const ResetPassword = () => {
     setIsSubmitting(true);
     
     try {
-      const response = await fetch(`http://localhost:5000/api/reset-password/${token}`, {
+      const response = await fetch(`${API_URL}/api/reset-password/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password, confirmPassword, recaptchaToken }),

@@ -46,12 +46,13 @@ const Layout = ({ children, auth, setAuth }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   // クライアント側でクッキーをチェックして認証状態を管理する
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/check-auth', {
+        const response = await fetch(`${API_URL}/api/check-auth`, {
           method: 'GET',
           credentials: 'include',  // クッキーを含めて送信
         });
@@ -74,7 +75,7 @@ const Layout = ({ children, auth, setAuth }) => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/logout', {
+      const response = await fetch(`${API_URL}/api/logout`, {
         method: 'POST',
         credentials: 'include', // クッキーを含めて送信
       });

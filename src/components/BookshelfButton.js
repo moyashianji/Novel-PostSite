@@ -5,6 +5,7 @@ import BookOffIcon from '@mui/icons-material/BookOnline';
 
 const BookshelfButton = ({ postId, initialBookshelfState, onToggle }) => {
   const [isInBookshelf, setIsInBookshelf] = useState(initialBookshelfState);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     setIsInBookshelf(initialBookshelfState);
@@ -18,7 +19,7 @@ const BookshelfButton = ({ postId, initialBookshelfState, onToggle }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/toggle-bookshelf`, {
+      const response = await fetch(`${API_URL}/api/posts/${postId}/toggle-bookshelf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

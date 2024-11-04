@@ -41,12 +41,13 @@ const PostEditPage = ({ user }) => {
 
   const [charCount, setCharCount] = useState(0);
   const [descCharCount, setDescCharCount] = useState(0);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchPostDetails = async () => {
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch(`http://localhost:5000/api/posts/${id}/edit`, {
+        const response = await fetch(`${API_URL}/api/posts/${id}/edit`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -63,12 +64,12 @@ const PostEditPage = ({ user }) => {
           setCharCount(data.content ? data.content.replace(/<[^>]*>/g, '').length : 0);
           setDescCharCount(data.description ? data.description.length : 0);
         } else if (response.status === 302) {
-            const data = await response.json();
-            navigate(data.redirectUrl);
-          } else {
-            console.error('Failed to fetch post details');
-            navigate('/mypage'); // その他のエラー時にもマイページにリダイレクト
-          }
+          const data = await response.json();
+          navigate(data.redirectUrl);
+        } else {
+          console.error('Failed to fetch post details');
+          navigate('/mypage'); // その他のエラー時にもマイページにリダイレクト
+        }
 
       } catch (error) {
         console.error('Error fetching post details:', error);
@@ -114,7 +115,7 @@ const PostEditPage = ({ user }) => {
     };
 
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${id}/update`, {
+      const response = await fetch(`${API_URL}/api/posts/${id}/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

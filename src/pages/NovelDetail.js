@@ -4,12 +4,12 @@ import { Container, Typography, Box, Button, Avatar, Grid, Paper, Chip, Card, Ca
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import CommentSection from '../components/CommentSection';
-import AutoScroll from '../components/AutoScroll'; 
+import AutoScroll from '../components/AutoScroll';
 import BookmarkButton from '../components/BookmarkButton';
-import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck'; 
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks'; 
-import VisibilityIcon  from '@mui/icons-material/Visibility'; 
-import StarIcon from '@mui/icons-material/Star'; 
+import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import StarIcon from '@mui/icons-material/Star';
 
 const NovelDetail = () => {
   const { id } = useParams();
@@ -21,35 +21,37 @@ const NovelDetail = () => {
   const [viewCount, setViewCount] = useState(0);
   const [bookshelfCount, setBookshelfCount] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
-  const [scrollSpeed, setScrollSpeed] = useState(50); 
+  const [scrollSpeed, setScrollSpeed] = useState(50);
   const [isBookmarkMode, setIsBookmarkMode] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isInBookshelf, setIsInBookshelf] = useState(false);
   const [seriesPosts, setSeriesPosts] = useState([]);
   const [selectedPostId, setSelectedPostId] = useState(id);
   const [seriesTitle, setSeriesTitle] = useState([]);
-    useEffect(() => {
-      const fetchPost = async () => {
-        try {
-          const response = await fetch(`http://localhost:5000/api/posts/${id}`);
-          
-          const data = await response.json();
-          setPost(data);
-          setGoodCount(data.goodCounter);
-          setViewCount(data.viewCounter);
-          setBookshelfCount(data.bookShelfCounter); 
+  const API_URL = process.env.REACT_APP_API_URL;
+
+  useEffect(() => {
+    const fetchPost = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/posts/${id}`);
+
+        const data = await response.json();
+        setPost(data);
+        setGoodCount(data.goodCounter);
+        setViewCount(data.viewCounter);
+        setBookshelfCount(data.bookShelfCounter);
 
         // シリーズの投稿を取得
 
         // シリーズの投稿を取得
         if (data.series) {
           console.log('Series ID:', data.series);  // Series IDのデバッグメッセージ
-        
-          const seriesResponse = await fetch(`http://localhost:5000/api/series/${data.series}/posts`);
-          const seriestitleResponse = await fetch(`http://localhost:5000/api/series/${data.series}/title`);
+
+          const seriesResponse = await fetch(`${API_URL}/api/series/${data.series}/posts`);
+          const seriestitleResponse = await fetch(`${API_URL}/api/series/${data.series}/title`);
 
           console.log('Series API response status:', seriesResponse.status);  // レスポンスステータスのデバッグメッセージ
-        
+
           if (seriesResponse.ok || seriestitleResponse.ok) {
             const seriesData = await seriesResponse.json();
             const seriesTitleData = await seriestitleResponse.json();
@@ -65,43 +67,43 @@ const NovelDetail = () => {
           console.log('No series found for this post');  // シリーズが見つからなかった場合のデバッグメッセージ
         }
         const token = localStorage.getItem('token');
-    
-          await fetch(`http://localhost:5000/api/posts/${id}/view`, {
-            method: 'POST',
+
+        await fetch(`${API_URL}/api/posts/${id}/view`, {
+          method: 'POST',
+        });
+
+        if (token) {
+          const likeResponse = await fetch(`${API_URL}/api/posts/${id}/isLiked`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
           });
-    
-          if (token) {
-            const likeResponse = await fetch(`http://localhost:5000/api/posts/${id}/isLiked`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            const likeData = await likeResponse.json();
-            setHasLiked(likeData.hasLiked);
-    
-            const bookshelfResponse = await fetch(`http://localhost:5000/api/posts/${id}/isInBookshelf`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            const bookshelfData = await bookshelfResponse.json();
-            setIsInBookshelf(bookshelfData.isInBookshelf);
-    
-            const followResponse = await fetch(`http://localhost:5000/api/users/${data.author._id}/is-following`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            const followData = await followResponse.json();
-            setIsFollowing(followData.isFollowing);
-          }
-        } catch (error) {
-          console.error('Failed to fetch post:', error);
+          const likeData = await likeResponse.json();
+          setHasLiked(likeData.hasLiked);
+
+          const bookshelfResponse = await fetch(`${API_URL}/api/posts/${id}/isInBookshelf`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const bookshelfData = await bookshelfResponse.json();
+          setIsInBookshelf(bookshelfData.isInBookshelf);
+
+          const followResponse = await fetch(`${API_URL}/api/users/${data.author._id}/is-following`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const followData = await followResponse.json();
+          setIsFollowing(followData.isFollowing);
         }
-      };
-    
-      fetchPost();
-    }, [id]);
+      } catch (error) {
+        console.error('Failed to fetch post:', error);
+      }
+    };
+
+    fetchPost();
+  }, [id]);
 
   useEffect(() => {
     if (location.state?.scrollTo) {
@@ -119,7 +121,7 @@ const NovelDetail = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/posts/${id}/good`, {
+      const response = await fetch(`${API_URL}/api/posts/${id}/good`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -147,15 +149,15 @@ const NovelDetail = () => {
         alert('ログインが必要です');
         return;
       }
-  
-      const response = await fetch(`http://localhost:5000/api/posts/${id}/bookshelf`, {
+
+      const response = await fetch(`${API_URL}/api/posts/${id}/bookshelf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-  
+
       if (response.ok) {
         const data = await response.json();
         setBookshelfCount(data.bookShelfCounter);
@@ -175,16 +177,16 @@ const NovelDetail = () => {
 
   const handleTextClick = async (event) => {
     if (isBookmarkMode) {
-      const bookmarkPosition = window.scrollY + event.clientY; 
+      const bookmarkPosition = window.scrollY + event.clientY;
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         alert('ログインが必要です');
         return;
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/me/bookmark`, {
+        const response = await fetch(`${API_URL}/api/me/bookmark`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -219,8 +221,8 @@ const NovelDetail = () => {
 
     try {
       const url = isFollowing
-        ? `http://localhost:5000/api/users/unfollow/${post.author._id}`
-        : `http://localhost:5000/api/users/follow/${post.author._id}`;
+        ? `${API_URL}/api/users/unfollow/${post.author._id}`
+        : `${API_URL}/api/users/follow/${post.author._id}`;
       const method = isFollowing ? 'DELETE' : 'POST';
 
       const response = await fetch(url, {
@@ -255,7 +257,7 @@ const NovelDetail = () => {
   return (
     <Container sx={{ marginTop: 4, position: 'relative' }}>
       <Grid container spacing={4}>
-        
+
         {/* 作品内容 */}
         <Grid item xs={12} md={9}>
           <Typography variant="h4" gutterBottom>
@@ -301,11 +303,11 @@ const NovelDetail = () => {
             <Box display="flex" flexWrap="wrap" gap={1}>
               {post.tags && post.tags.length > 0 ? (
                 post.tags.map((tag, index) => (
-                  <Chip 
+                  <Chip
                     key={index}
                     label={tag}
                     sx={{ marginRight: 0.5, marginBottom: 0.5 }}
-                    onClick={() => handleTagClick(tag)} 
+                    onClick={() => handleTagClick(tag)}
                   />
                 ))
               ) : (
@@ -315,7 +317,7 @@ const NovelDetail = () => {
               )}
             </Box>
           </Box>
-          <Box sx={{ height: '16px' }} />  
+          <Box sx={{ height: '16px' }} />
 
           {/* 自動スクロール機能 */}
           <AutoScroll scrollSpeed={scrollSpeed} setScrollSpeed={setScrollSpeed} />
@@ -360,13 +362,13 @@ const NovelDetail = () => {
               </Typography>
             )}
           </Box>
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            sx={{ 
-              marginBottom: 4, 
-              gap: 2, 
-              flexWrap: 'wrap'  
+          <Box
+            display="flex"
+            alignItems="center"
+            sx={{
+              marginBottom: 4,
+              gap: 2,
+              flexWrap: 'wrap'
             }}
           >
             <Button
@@ -374,11 +376,11 @@ const NovelDetail = () => {
               color={hasLiked ? 'secondary' : 'primary'}
               startIcon={hasLiked ? <ThumbUpIcon /> : <ThumbUpOffAltIcon />}
               onClick={handleGoodClick}
-              sx={{ 
-                marginBottom: { xs: 2, md: 0 },  
-                minWidth: '150px',  
-                flex: '1',  
-                textAlign: 'center' 
+              sx={{
+                marginBottom: { xs: 2, md: 0 },
+                minWidth: '150px',
+                flex: '1',
+                textAlign: 'center'
               }}
             >
               {hasLiked ? 'いいねを解除' : 'いいね'}
@@ -389,10 +391,10 @@ const NovelDetail = () => {
               color={isInBookshelf ? 'secondary' : 'primary'}
               startIcon={isInBookshelf ? <LibraryAddCheckIcon /> : <LibraryBooksIcon />}
               onClick={handleBookshelfClick}
-              sx={{ 
-                minWidth: '150px',  
-                flex: '1',  
-                textAlign: 'center'  
+              sx={{
+                minWidth: '150px',
+                flex: '1',
+                textAlign: 'center'
               }}
             >
               {isInBookshelf ? '本棚から削除' : '本棚に追加'}
@@ -403,49 +405,49 @@ const NovelDetail = () => {
         </Grid>
 
         <Grid item xs={12} md={3}>
-  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
-    <Paper 
-      elevation={3} 
-      sx={{ 
-        padding: 2, 
-        textAlign: 'center', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <RouterLink to={`/user/${post.author._id}`}>
-        <Avatar 
-          src={`http://localhost:5000${post.author.icon}`} 
-          alt={post.author.nickname} 
-          sx={{ width: 100, height: 100, marginBottom: 2 }}
-        />
-      </RouterLink>
-      <Typography variant="h6">{post.author.nickname}</Typography>
-      <Button
-        variant={isFollowing ? 'contained' : 'outlined'}
-        color="primary"
-        onClick={handleFollowToggle}
-        sx={{ mt: 2 }}
-      >
-        {isFollowing ? 'フォロー解除' : 'フォロー'}
-      </Button>
-    </Paper>
-  </Box>
-  
-  {post.series && seriesPosts && seriesPosts.length > 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
+            <Paper
+              elevation={3}
+              sx={{
+                padding: 2,
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <RouterLink to={`/user/${post.author._id}`}>
+                <Avatar
+                  src={`${API_URL}${post.author.icon}`}
+                  alt={post.author.nickname}
+                  sx={{ width: 100, height: 100, marginBottom: 2 }}
+                />
+              </RouterLink>
+              <Typography variant="h6">{post.author.nickname}</Typography>
+              <Button
+                variant={isFollowing ? 'contained' : 'outlined'}
+                color="primary"
+                onClick={handleFollowToggle}
+                sx={{ mt: 2 }}
+              >
+                {isFollowing ? 'フォロー解除' : 'フォロー'}
+              </Button>
+            </Paper>
+          </Box>
+
+          {post.series && seriesPosts && seriesPosts.length > 0 && (
             <Box sx={{ mt: 4 }}>
-<Typography 
-  variant="h6" 
-  gutterBottom 
-  sx={{ 
-    wordBreak: 'break-word', 
-    whiteSpace: 'pre-wrap' 
-  }}
->
- {seriesTitle.title}
-</Typography>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap'
+                }}
+              >
+                {seriesTitle.title}
+              </Typography>
               <FormControl fullWidth>
                 <InputLabel>シリーズの投稿を選択</InputLabel>
                 <Select
@@ -463,7 +465,7 @@ const NovelDetail = () => {
             </Box>
           )}
 
-</Grid>
+        </Grid>
       </Grid>
     </Container>
   );

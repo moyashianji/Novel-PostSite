@@ -20,11 +20,12 @@ const SeriesEditPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const fetchSeries = useCallback(async () => {
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5000/api/series/${id}`, {
+      const response = await fetch(`${API_URL}/api/series/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -69,7 +70,7 @@ const SeriesEditPage = () => {
   };
 
   const handleCloseModal = () => {
-   fetchSeries();
+    fetchSeries();
 
     setIsModalOpen(false);
   };
@@ -86,7 +87,7 @@ const SeriesEditPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/series/${id}/removePost`, {
+      const response = await fetch(`${API_URL}/api/series/${id}/removePost`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +124,7 @@ const SeriesEditPage = () => {
     }));
 
     try {
-      const response = await fetch(`http://localhost:5000/api/series/${id}/updatePosts`, {
+      const response = await fetch(`${API_URL}/api/series/${id}/updatePosts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,9 +134,9 @@ const SeriesEditPage = () => {
       });
 
       if (response.ok) {
-        
+
         setIsModified(false);
-        
+
         await fetchSeries();
 
         alert('エピソード番号が更新されました。');
@@ -158,28 +159,28 @@ const SeriesEditPage = () => {
             <Typography variant="h4" gutterBottom>
               シリーズ: {series.title}
             </Typography>
-            
-            <Box sx={{ display: 'flex', gap: 1 }}>  {/* ここで gap を追加 */}
-            {/* 追加ボタンを追加 */}
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleAddNovelClick}
-            >
-              追加
-            </Button>
-            
-            <Button
-              variant="contained"
-              color="primary"
-              disabled={!isModified} // 変更がない場合はボタンを無効化
-              onClick={handleSave}
-              sx={{ marginRight: 2 }}
-            >
-              保存
-            </Button>
 
-          </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>  {/* ここで gap を追加 */}
+              {/* 追加ボタンを追加 */}
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleAddNovelClick}
+              >
+                追加
+              </Button>
+
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={!isModified} // 変更がない場合はボタンを無効化
+                onClick={handleSave}
+                sx={{ marginRight: 2 }}
+              >
+                保存
+              </Button>
+
+            </Box>
           </Box>
           {series.posts && series.posts.length > 0 ? (
             series.posts.map((post, index) => (

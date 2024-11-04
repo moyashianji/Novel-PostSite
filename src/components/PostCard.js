@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 const PostCard = ({ post }) => {
   const { _id, title, author, description, content, wordCount, tags } = post;
   const navigate = useNavigate();
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const handleTagClick = (tag) => {
     navigate(`/search?query=${encodeURIComponent(tag)}`);
@@ -21,7 +22,7 @@ const PostCard = ({ post }) => {
       <Box display="flex" alignItems="center" mb={2}>
         <Link to={`/user/${author._id}`}>
           <Avatar 
-            src={`http://localhost:5000${author.icon}`} 
+            src={`${API_URL}${author.icon}`} 
             alt={author.nickname} 
             sx={{ width: 32, height: 32 }}  // アイコンサイズを小さく
           />

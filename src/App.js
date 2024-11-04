@@ -22,12 +22,14 @@ const theme = createTheme();
 function App() {
   const [auth, setAuth] = useState(false);
   const [user, setUser] = useState(null);
+  const API_URL = process.env.REACT_APP_API_URL;
+
 // パラメータで受け取ったトークンを使って、パスワードリセットリクエストをサーバーに送信
   useEffect(() => {
 
     const fetchUserData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/user/me', {
+        const response = await fetch(`${API_URL}/api/user/me`, {
           credentials: 'include',  // セッションを含めてリクエストを送信
         });
   

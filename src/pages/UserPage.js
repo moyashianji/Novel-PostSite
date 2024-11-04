@@ -59,15 +59,16 @@ const UserPage = () => {
   const [selectedTag, setSelectedTag] = useState('');
   const [isFollowing, setIsFollowing] = useState(false);
   const navigate = useNavigate();
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/users/${id}`);
+        const response = await fetch(`${API_URL}/api/users/${id}`);
         const data = await response.json();
         setUser(data);
 
-        const followStatusResponse = await fetch(`http://localhost:5000/api/users/${id}/is-following`, {
+        const followStatusResponse = await fetch(`${API_URL}/api/users/${id}/is-following`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
@@ -81,7 +82,7 @@ const UserPage = () => {
 
     const fetchWorks = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/users/${id}/works`);
+        const response = await fetch(`${API_URL}/api/users/${id}/works`);
         const data = await response.json();
         setWorks(data);
         setFilteredWorks(data);
@@ -92,7 +93,7 @@ const UserPage = () => {
 
     const fetchSeries = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/users/${id}/series`);
+        const response = await fetch(`${API_URL}/api/users/${id}/series`);
         const data = await response.json();
         setSeries(data);
       } catch (error) {
@@ -125,8 +126,8 @@ const UserPage = () => {
 
     try {
       const url = isFollowing
-        ? `http://localhost:5000/api/users/unfollow/${id}`
-        : `http://localhost:5000/api/users/follow/${id}`;
+        ? `${API_URL}/api/users/unfollow/${id}`
+        : `${API_URL}/api/users/follow/${id}`;
       const method = isFollowing ? 'DELETE' : 'POST';
 
       const response = await fetch(url, {
@@ -156,7 +157,7 @@ const UserPage = () => {
     <Box sx={{ maxWidth: 1200, margin: 'auto', paddingTop: 4 }}>
       <UserCard>
         <Box display="flex" alignItems="center">
-          <Avatar src={`http://localhost:5000${user.icon}`} alt={user.nickname} sx={{ width: 100, height: 100, marginRight: 2 }} />
+          <Avatar src={`${API_URL}${user.icon}`} alt={user.nickname} sx={{ width: 100, height: 100, marginRight: 2 }} />
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{user.nickname}</Typography>
             <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>

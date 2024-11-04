@@ -11,6 +11,7 @@ const SeriesEditSidebar = ({ series }) => {
   const [aiGenerated, setAiGenerated] = useState(false);
   const [titleError, setTitleError] = useState('');
   const [descriptionError, setDescriptionError] = useState('');
+  const API_URL = process.env.REACT_APP_API_URL;
 
   // サイドバーが開かれたときや、シリーズが更新されたときに状態を更新する
   useEffect(() => {
@@ -55,7 +56,7 @@ const SeriesEditSidebar = ({ series }) => {
     };
 
     try {
-      const response = await fetch(`http://localhost:5000/api/series/${series._id}/update`, {
+      const response = await fetch(`${API_URL}/api/series/${series._id}/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

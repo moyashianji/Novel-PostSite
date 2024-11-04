@@ -4,6 +4,7 @@ import { Box, Button, TextField } from '@mui/material';
 
 const AutoScroll = ({ scrollSpeed, setScrollSpeed }) => {
   const scrollIntervalRef = useRef(null);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const handleScroll = () => {
     // スクロールを開始

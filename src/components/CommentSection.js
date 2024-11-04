@@ -5,6 +5,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 const ReportModal = ({ open, onClose, onSubmit }) => {
   const [reportText, setReportText] = useState('');
   const [charCount, setCharCount] = useState(0);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const handleSubmit = () => {
     if (reportText.trim() !== '') {
@@ -60,11 +61,12 @@ const CommentSection = ({ postId }) => {
   const [reportOpen, setReportOpen] = useState(false);
   const [userId, setUserId] = useState(null); // ユーザーIDを保存するステート
   const [loading, setLoading] = useState(false);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   // ユーザー情報の取得
   const fetchUserInfo = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/user/me', {
+      const response = await fetch(`${API_URL}/api/user/me`, {
         method: 'GET',
         credentials: 'include', // 認証トークンを含める
       });
@@ -82,7 +84,7 @@ const CommentSection = ({ postId }) => {
   const fetchComments = async (page = 1) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments?page=${page}&limit=5`);
+      const response = await fetch(`${API_URL}/api/posts/${postId}/comments?page=${page}&limit=5`);
       const data = await response.json();
       setComments(prevComments => [...prevComments, ...data.comments]);
       setTotalComments(data.totalComments);
@@ -110,7 +112,7 @@ const CommentSection = ({ postId }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments`, {
+      const response = await fetch(`${API_URL}/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +141,7 @@ const CommentSection = ({ postId }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments/${parentCommentId}/reply`, {
+      const response = await fetch(`${API_URL}/api/posts/${postId}/comments/${parentCommentId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -190,7 +192,7 @@ const CommentSection = ({ postId }) => {
       replyId = selectedReplyComment._id; // 返信コメントのID
     }
     try {
-      let url = `http://localhost:5000/api/posts/${postId}/comments/${commentId}`;
+      let url = `${API_URL}/api/posts/${postId}/comments/${commentId}`;
       console.log(replyId)
       // 返信を削除する場合、replyIdをクエリパラメータとして送信
       if (isReply && replyId) {
@@ -259,7 +261,7 @@ const CommentSection = ({ postId }) => {
             <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Box display="flex" alignItems="center">
-                  <Avatar src={`http://localhost:5000${comment.author.icon}`} alt={comment.author.nickname} sx={{ marginRight: 1 }} />
+                  <Avatar src={`${API_URL}${comment.author.icon}`} alt={comment.author.nickname} sx={{ marginRight: 1 }} />
                   <Typography variant="body2" fontWeight="bold">
                     {comment.author.nickname}
                   </Typography>
@@ -284,7 +286,11 @@ const CommentSection = ({ postId }) => {
                     <Box display="flex" justifyContent="space-between" alignItems="center">
 
                       <Box display="flex" alignItems="center">
-                        <Avatar src={`http://localhost:5000${reply.author.icon}`} alt={reply.author.nickname} sx={{ marginRight: 1 }} />
+                        {
+                          // コンソールにアバターのリンクを出力
+                          console.log('Avatar URL:', `${API_URL}${reply.author.icon}`)
+                        }
+                        <Avatar src={`${API_URL}${reply.author.icon}`} alt={reply.author.nickname} sx={{ marginRight: 1 }} />
                         <Typography variant="body2" fontWeight="bold">{reply.author.nickname}</Typography>
                       </Box>
                       <IconButton onClick={(event) => handleMenuOpen(event, comment, reply)}>

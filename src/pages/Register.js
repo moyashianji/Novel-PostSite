@@ -1,5 +1,5 @@
-import React, { useState, useRef,useEffect } from 'react';
-import { Box, Button, TextField, Checkbox, FormControlLabel, Typography, Paper, IconButton, Avatar, MenuItem,styled  } from '@mui/material';
+import React, { useState, useRef, useEffect } from 'react';
+import { Box, Button, TextField, Checkbox, FormControlLabel, Typography, Paper, IconButton, Avatar, MenuItem, styled } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ReCAPTCHA from 'react-google-recaptcha';
 import zxcvbn from 'zxcvbn';  // パスワード強度チェックライブラリ
@@ -49,8 +49,9 @@ const Register = () => {
   const [year, setYear] = useState('');
   const [month, setMonth] = useState('');
   const [day, setDay] = useState('');
+  const API_URL = process.env.REACT_APP_API_URL;
 
- // 現在の日付を取得
+  // 現在の日付を取得
   const today = new Date();
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth() + 1; // 月は0から始まるので+1
@@ -73,7 +74,7 @@ const Register = () => {
       // クリーンアップ関数でインターバルをクリア
       return () => clearInterval(intervalId);
     }
-  }, [verificationCodeExpiration]);    
+  }, [verificationCodeExpiration]);
   // 入力制限
   const handleYearChange = (e) => {
     const value = e.target.value;
@@ -116,7 +117,7 @@ const Register = () => {
     const result = zxcvbn(newPassword);
 
     // zxcvbnのscoreは0〜4の範囲で返されるが、万一のために範囲外の場合の処理
-    setPasswordStrength(result ? Math.min(result.score, 3) : 0); 
+    setPasswordStrength(result ? Math.min(result.score, 3) : 0);
   };
   // Step1: 仮登録（確認コード送信）
   const handleNextStep = async () => {
@@ -145,7 +146,7 @@ const Register = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/register-step1', {
+      const response = await fetch(`${API_URL}/api/register-step1`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',  // セッションを含めてリクエストを送信
@@ -156,7 +157,7 @@ const Register = () => {
       if (response.ok) {
         setStep(2); // 確認コード入力ステップへ移行
         setVerificationCodeExpiration(new Date(new Date().getTime() + 5 * 60 * 1000)); // 5分後に失効
-       // setExpirationTime(expiration);
+        // setExpirationTime(expiration);
       } else {
         setErrorMessages({ general: data.message });
       }
@@ -177,7 +178,7 @@ const Register = () => {
     setIsVerifyCode(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/register-step2', {
+      const response = await fetch(`${API_URL}/api/register-step2`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',  // セッションを含めてリクエストを送信
@@ -202,7 +203,7 @@ const Register = () => {
     setIsResendCode(true);
     try {
 
-      const response = await fetch('http://localhost:5000/api/resend-verification-code', {
+      const response = await fetch(`${API_URL}/api/resend-verification-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -234,8 +235,8 @@ const Register = () => {
     if (!month || parseInt(month) < 1 || parseInt(month) > 12 || (parseInt(year) === currentYear && parseInt(month) > currentMonth)) {
       errors.month = '過去または現在の月を入力してください';
     }
-    if (!day || parseInt(day) < 1 || parseInt(day) > 31 || 
-       (parseInt(year) === currentYear && parseInt(month) === currentMonth && parseInt(day) > currentDay)) {
+    if (!day || parseInt(day) < 1 || parseInt(day) > 31 ||
+      (parseInt(year) === currentYear && parseInt(month) === currentMonth && parseInt(day) > currentDay)) {
       errors.day = '過去または現在の日を入力してください';
     }
 
@@ -249,32 +250,32 @@ const Register = () => {
 
       console.log('生年月日:', dob);
       // サーバーに送信する処理をここに追加
-    
 
-    const formData = new FormData();
-    formData.append('nickname', nickname);
-    formData.append('dob', dob);
-    formData.append('gender', gender);
-    if (icon) formData.append('icon', icon);
 
-    try {
-      const response = await fetch('http://localhost:5000/api/register-step3', {
-        method: 'POST',
-        credentials: 'include',  // セッションを含めてリクエストを送信
-        body: formData,
-      });
+      const formData = new FormData();
+      formData.append('nickname', nickname);
+      formData.append('dob', dob);
+      formData.append('gender', gender);
+      if (icon) formData.append('icon', icon);
 
-      const data = await response.json();
-      if (response.ok) {
-        navigate('/mypage');
-      } else {
-        setErrorMessages({ general: data.message });
+      try {
+        const response = await fetch(`${API_URL}/api/register-step3`, {
+          method: 'POST',
+          credentials: 'include',  // セッションを含めてリクエストを送信
+          body: formData,
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          navigate('/mypage');
+        } else {
+          setErrorMessages({ general: data.message });
+        }
+      } catch (error) {
+        setErrorMessages({ general: 'サーバーエラーが発生しました' });
       }
-    } catch (error) {
-      setErrorMessages({ general: 'サーバーエラーが発生しました' });
     }
-  }
-};
+  };
 
   // アイコンファイル選択処理
   const handleIconChange = (e) => {
@@ -327,7 +328,7 @@ const Register = () => {
         inputProps={{ maxLength: 30 }}  // 最大30文字に制限
         error={!!errorMessages.password}
         helperText={errorMessages.password || `パスワードの強度: ${['弱い', '弱い', '中', '強い'][passwordStrength || 0]}`}  // passwordStrengthが未定義なら0を使用
-        />
+      />
       <TextField
         label="Confirm Password"
         variant="outlined"
@@ -365,7 +366,7 @@ const Register = () => {
 
         >
           {isSubmitting ? '送信中...' : '次へ'}
-          </Button>
+        </Button>
       </Box>
     </Paper>
   );
@@ -379,7 +380,7 @@ const Register = () => {
       <TextField
         label="確認コード"
         variant="outlined"
-      
+
         fullWidth
         margin="normal"
         value={verificationCode}
@@ -396,7 +397,7 @@ const Register = () => {
           maxLength: 6, // 最大6文字まで
           inputMode: 'numeric', // モバイルで数字キーボードを表示
           pattern: '[0-9]*', // 数字のみ許可
-        }}   
+        }}
       />
       {errorMessages.general && (
         <Typography color="error" variant="body2">
@@ -409,26 +410,26 @@ const Register = () => {
         </Typography>
       ) : (
         <Typography variant="body2">
-        確認コードは{remainingTime}秒で失効します。失効した場合は確認コードを再送信してください。
+          確認コードは{remainingTime}秒で失効します。失効した場合は確認コードを再送信してください。
         </Typography>
       )}
       <Box mt={2}>
         <Button
-         variant="contained"
+          variant="contained"
           color="primary"
           onClick={handleVerifyCode}
           disabled={isVerifyCode}
-          >
+        >
           {isVerifyCode ? '送信中...' : '次へ'}
         </Button>
         <Button
-         variant="outlined"
+          variant="outlined"
           color="secondary"
           onClick={handleResendCode}
           sx={{ ml: 2 }}
           disabled={isResendCode}
-          >
-        {isResendCode ? '送信済' : '確認コード再送信'}
+        >
+          {isResendCode ? '送信済' : '確認コード再送信'}
         </Button>
       </Box>
     </Paper>
@@ -437,45 +438,45 @@ const Register = () => {
   // Step3: 本登録画面（ユーザー情報入力）
   const renderStepThree = () => (
     <Paper style={StyledPaper}>
-    <Typography variant="h5" component="h2" gutterBottom>
-      Step 3: ユーザー情報入力
-    </Typography>
-    
-    {/* アイコン (任意) */}
-    <Typography variant="body1">アイコン <span style={{ color: 'gray' }}>任意</span></Typography>
-    <Box display="flex" alignItems="center" mt={2}>
-      <input
-        accept="image/*"
-        style={{ display: 'none' }}
-        id="icon-button-file"
-        type="file"
-        onChange={handleIconChange}
+      <Typography variant="h5" component="h2" gutterBottom>
+        Step 3: ユーザー情報入力
+      </Typography>
+
+      {/* アイコン (任意) */}
+      <Typography variant="body1">アイコン <span style={{ color: 'gray' }}>任意</span></Typography>
+      <Box display="flex" alignItems="center" mt={2}>
+        <input
+          accept="image/*"
+          style={{ display: 'none' }}
+          id="icon-button-file"
+          type="file"
+          onChange={handleIconChange}
+        />
+        <label htmlFor="icon-button-file">
+          <IconButton color="primary" component="span">
+            <Avatar
+              src={preview || ''}
+              alt="icon preview"
+            />
+          </IconButton>
+        </label>
+      </Box>
+
+      {/* ニックネーム */}
+      <Typography variant="body1">ニックネーム <span style={{ color: 'red' }}>*必須</span></Typography>
+      <TextField
+        label="Nickname"
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={nickname}
+        onChange={(e) => setNickname(e.target.value)}
+        inputProps={{ maxLength: 30 }}
+        error={!!errorMessages.nickname}
+        helperText={errorMessages.nickname || ''}
       />
-      <label htmlFor="icon-button-file">
-        <IconButton color="primary" component="span">
-          <Avatar
-           src={preview || ''}
-           alt="icon preview"
-          />
-        </IconButton>
-      </label>
-    </Box>
 
-    {/* ニックネーム */}
-    <Typography variant="body1">ニックネーム <span style={{ color: 'red' }}>*必須</span></Typography>
-    <TextField
-      label="Nickname"
-      variant="outlined"
-      fullWidth
-      margin="normal"
-      value={nickname}
-      onChange={(e) => setNickname(e.target.value)}
-      inputProps={{maxLength: 30}}
-      error={!!errorMessages.nickname}
-      helperText={errorMessages.nickname || ''}
-    />
-
-     <Typography variant="body1">生年月日 <span style={{ color: 'red' }}>*必須</span></Typography>
+      <Typography variant="body1">生年月日 <span style={{ color: 'red' }}>*必須</span></Typography>
       <Box display="flex" gap={2}>
         <TextField
           label="年"
@@ -505,62 +506,62 @@ const Register = () => {
           inputProps={{ maxLength: 2 }}
         />
       </Box>
-    {errorMessages.dob && (
-      <Typography color="error" variant="body2">
-        {errorMessages.dob}
-      </Typography>
-    )}
+      {errorMessages.dob && (
+        <Typography color="error" variant="body2">
+          {errorMessages.dob}
+        </Typography>
+      )}
 
-    {/* 性別 */}
-    <Typography variant="body1">性別 <span style={{ color: 'red' }}>*必須</span></Typography>
-    <TextField
-      label="Gender"
-      select
-      fullWidth
-      margin="normal"
-      value={gender}
-      onChange={(e) => setGender(e.target.value)}
-      error={!!errorMessages.gender}
-      helperText={errorMessages.gender || ''}
-    >
-      {genderOptions.map(option => (
-        <MenuItem key={option.value} value={option.value}>
-          {option.label}
-        </MenuItem>
-      ))}
-    </TextField>
-
-    {/* 規約 */}
-    <FormControlLabel
-      control={<Checkbox checked={termsAgreed} onChange={(e) => setTermsAgreed(e.target.checked)} />}
-      label="規約に同意します"
-    />
-    {errorMessages.termsAgreed && (
-      <Typography color="error" variant="body2">
-        {errorMessages.termsAgreed}
-      </Typography>
-    )}
-
-    <Typography variant="body2">
-      {termsExpanded
-        ? '規約の全文がここに表示されます。' 
-        : '規約の一部がここに表示されます。'}
-      <Button onClick={() => setTermsExpanded(!termsExpanded)}>
-        {termsExpanded ? '閉じる' : '全文表示'}
-      </Button>
-    </Typography>
-
-    <Box mt={2}>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleRegister}
-        disabled={!termsAgreed}
+      {/* 性別 */}
+      <Typography variant="body1">性別 <span style={{ color: 'red' }}>*必須</span></Typography>
+      <TextField
+        label="Gender"
+        select
+        fullWidth
+        margin="normal"
+        value={gender}
+        onChange={(e) => setGender(e.target.value)}
+        error={!!errorMessages.gender}
+        helperText={errorMessages.gender || ''}
       >
-        登録
-      </Button>
-    </Box>
-  </Paper>
+        {genderOptions.map(option => (
+          <MenuItem key={option.value} value={option.value}>
+            {option.label}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {/* 規約 */}
+      <FormControlLabel
+        control={<Checkbox checked={termsAgreed} onChange={(e) => setTermsAgreed(e.target.checked)} />}
+        label="規約に同意します"
+      />
+      {errorMessages.termsAgreed && (
+        <Typography color="error" variant="body2">
+          {errorMessages.termsAgreed}
+        </Typography>
+      )}
+
+      <Typography variant="body2">
+        {termsExpanded
+          ? '規約の全文がここに表示されます。'
+          : '規約の一部がここに表示されます。'}
+        <Button onClick={() => setTermsExpanded(!termsExpanded)}>
+          {termsExpanded ? '閉じる' : '全文表示'}
+        </Button>
+      </Typography>
+
+      <Box mt={2}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleRegister}
+          disabled={!termsAgreed}
+        >
+          登録
+        </Button>
+      </Box>
+    </Paper>
   );
 
   // ステップごとの表示切り替え

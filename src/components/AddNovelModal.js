@@ -4,13 +4,14 @@ import { Box, Typography, Modal, Card, CardContent, Button } from '@mui/material
 const AddNovelModal = ({ open, handleClose, seriesId }) => {
   const [novels, setNovels] = useState([]);
   const [addedNovelIds, setAddedNovelIds] = useState(new Set());
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchNovels = async () => {
       console.log('Fetching novels for the user...');
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch('http://localhost:5000/api/users/me/novels', {
+        const response = await fetch(`${API_URL}/api/users/me/novels`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -31,7 +32,7 @@ const AddNovelModal = ({ open, handleClose, seriesId }) => {
       console.log('Fetching series details for seriesId:', seriesId);
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch(`http://localhost:5000/api/series/${seriesId}`, {
+        const response = await fetch(`${API_URL}/api/series/${seriesId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -43,12 +44,12 @@ const AddNovelModal = ({ open, handleClose, seriesId }) => {
         const seriesData = await response.json();
         console.log('Fetched series data:', seriesData);
 
-        console.log('aaaa',seriesData.posts)
-;        // postIdが存在するか確認してからIDを取得
-      const novelIds = new Set(
-        seriesData.posts
-          .map(post => post._id.toString()) // postId._idを文字列に変換して取得
-      );
+        console.log('aaaa', seriesData.posts)
+          ;        // postIdが存在するか確認してからIDを取得
+        const novelIds = new Set(
+          seriesData.posts
+            .map(post => post._id.toString()) // postId._idを文字列に変換して取得
+        );
         console.log('Extracted novel IDs already in the series:', novelIds);
         setAddedNovelIds(novelIds);
       } catch (error) {
@@ -68,7 +69,7 @@ const AddNovelModal = ({ open, handleClose, seriesId }) => {
   const handleAddToSeries = async (novelId) => {
     console.log('Attempting to add novel to series. Novel ID:', novelId, 'Series ID:', seriesId);
     try {
-      const response = await fetch(`http://localhost:5000/api/series/${seriesId}/addPost`, {
+      const response = await fetch(`${API_URL}/api/series/${seriesId}/addPost`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

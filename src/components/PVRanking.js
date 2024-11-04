@@ -5,11 +5,12 @@ import StarIcon from '@mui/icons-material/Star';
 const PVRanking = () => {
   const [ranking, setRanking] = useState([]);
   const [showAll, setShowAll] = useState(false);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchRanking = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/posts/ranking');
+        const response = await fetch(`${API_URL}/api/posts/ranking`);
         
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);

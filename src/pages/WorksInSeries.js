@@ -5,12 +5,13 @@ import { useParams } from 'react-router-dom';
 const WorksInSeries = () => {
   const { id } = useParams();
   const [works, setWorks] = useState([]);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchWorks = async () => {
       try {
         console.log(id);
-        const response = await fetch(`http://localhost:5000/api/series/${id}/works`);
+        const response = await fetch(`${API_URL}/api/series/${id}/works`);
         const data = await response.json();
         console.log(data)
         setWorks(data);

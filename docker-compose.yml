@@ -1,0 +1,43 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app:cached  # ホスト側とコンテナ側のコード同期
+      - /app/node_modules  # node_modulesをホストと分離
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # ファイル監視モードを有効化
+    command: npm start  # ホットリロード用の開発モードで起動
+    ports:
+      - "3000:3000"
+
+  backend:
+    build:
+      context: ./backend  # バックエンドのパス
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env  # この行で .env ファイルを読み込む
+    volumes:
+      - ./backend:/usr/src/app  # ホスト側とコンテナ側のコードを同期
+      - /usr/src/app/node_modules  # node_modulesをホストと分離
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/novel-site  # ホストのMongoDBに接続
+    ports:
+      - "5000:5000"
+    depends_on:
+      - frontend
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf  # メイン設定をマウント
+      - ./default.conf:/etc/nginx/conf.d/default.conf  # サーバーブロック設定をマウント
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  mongo-data:

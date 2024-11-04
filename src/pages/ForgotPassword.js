@@ -7,6 +7,7 @@ const ForgotPassword = () => {
   const [recaptchaToken, setRecaptchaToken] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessages, setErrorMessages] = useState({});
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const handleCaptchaChange = (token) => {
     setRecaptchaToken(token);
@@ -30,7 +31,7 @@ const ForgotPassword = () => {
     }
     setIsSubmitting(true);
     
-    const response = await fetch('http://localhost:5000/api/forgot-password', {
+    const response = await fetch(`${API_URL}/api/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, recaptchaToken }),

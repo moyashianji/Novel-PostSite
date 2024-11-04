@@ -14,12 +14,19 @@ const Home = ({ auth }) => {
   const [newTag, setNewTag] = useState('');
   const [isPending, startTransition] = useTransition();  // useTransitionを使用
   const [text, setText] = useState({});  // 各タグ入力用の一時的な状態
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchPosts = async (page = 1) => {
       try {
-        const response = await fetch(`http://localhost:5000/api/posts?page=${page}`);
+        const response = await fetch(`${API_URL}/api/posts?page=${page}`);
         const data = await response.json();
+            // カスタムヘッダーを取得する
+    const proxyStatus = response.headers.get('X-Proxy-Status');
+    
+    // ヘッダー情報を画面に表示
+    console.log(proxyStatus);  // "Served via Nginx"と表示されます
+ 
         startTransition(() => {
 
         setPosts(data.posts);
@@ -45,7 +52,7 @@ const Home = ({ auth }) => {
   const fetchUserTags = useCallback(async () => {
     if (!auth) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/users/tags`, {
+      const response = await fetch(`${API_URL}/api/users/tags`, {
         method: 'GET',
 
         credentials: 'include',  // 認証情報を含めてリクエスト
@@ -75,7 +82,7 @@ const Home = ({ auth }) => {
   // タグ情報を保存する
   const saveTagToUser = useCallback(async (index, tag) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/tags`, {
+      const response = await fetch(`${API_URL}/api/users/tags`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +137,7 @@ const Home = ({ auth }) => {
     }
     try {
 
-      const response = await fetch(`http://localhost:5000/api/posts/tag/${tag}?page=${page}`);
+      const response = await fetch(`${API_URL}/api/posts/tag/${tag}?page=${page}`);
       const data = await response.json();
       console.log(data.posts)
       startTransition(() => {
@@ -179,7 +186,7 @@ const Home = ({ auth }) => {
 const handleDeleteTagContainer = useCallback(async (index) => {
   try {
     // サーバーに削除リクエストを送信
-    const response = await fetch(`http://localhost:5000/api/users/tags/${index}`, {
+    const response = await fetch(`${API_URL}/api/users/tags/${index}`, {
       method: 'DELETE',
       credentials: 'include',  // 認証情報を含めてリクエスト
     });
