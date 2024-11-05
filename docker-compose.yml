@@ -23,10 +23,17 @@ services:
       - /usr/src/app/node_modules  # node_modulesをホストと分離
     environment:
       - MONGO_URI=mongodb://mongo:27017/novel-site  # ホストのMongoDBに接続
+      - REDIS_URL=redis://redis:6379  # ここに追加（Redisへの接続設定）
     ports:
       - "5000:5000"
     depends_on:
       - frontend
+      - redis  # Redisの依存関係を追加
+
+  redis:
+    image: redis:alpine  # Redisの軽量イメージを使用
+    ports:
+      - "6379:6379"  # デフォルトポートのマッピング
 
   nginx:
     image: nginx:alpine

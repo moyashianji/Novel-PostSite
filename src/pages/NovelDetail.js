@@ -66,11 +66,13 @@ const NovelDetail = () => {
         } else {
           console.log('No series found for this post');  // シリーズが見つからなかった場合のデバッグメッセージ
         }
-        const token = localStorage.getItem('token');
 
         await fetch(`${API_URL}/api/posts/${id}/view`, {
           method: 'POST',
         });
+        console.error('viewcount');
+
+        const token = localStorage.getItem('token');
 
         if (token) {
           const likeResponse = await fetch(`${API_URL}/api/posts/${id}/isLiked`, {

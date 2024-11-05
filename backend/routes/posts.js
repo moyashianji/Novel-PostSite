@@ -9,8 +9,9 @@ const Series = require('../models/Series');
 const Follow = require('../models/Follow'); // Followモデルのインポート
 const multer = require('multer');
 const path = require('path');
-
 const router = express.Router();
+const cron = require('node-cron');  // 定期実行のためのライブラリ
+const { client: redisClient, ensureRedisConnection } = require('../utils/redisClient');
 
 const viewTracking = new Map(); // ユーザーごとに閲覧を追跡
 // 全てのPostドキュメントにviewCounterフィールドが無い場合は0に初期化
@@ -85,7 +86,6 @@ router.get('/tag/:tag', async (req, res) => {
       .skip((page - 1) * postsPerPage)
       .limit(postsPerPage)
       .populate('author');
-    console.log(posts)
     res.json({
       posts,
       totalPosts,
@@ -199,38 +199,62 @@ router.get('/:id([0-9a-fA-F]{24})/edit', authenticateToken, async (req, res) => 
     res.status(500).json({ message: '投稿の取得に失敗しました。', error });
   }
 });
+
+
+// 閲覧数更新エンドポイント
 router.post('/:id([0-9a-fA-F]{24})/view', async (req, res) => {
   const postId = req.params.id;
-  const userId = req.user ? req.user._id.toString() : req.ip; // ログインユーザーかIPアドレスで区別
-
-  const key = `${postId}:${userId}`;
-  const lastViewed = viewTracking.get(key);
-
-  const now = new Date();
-
-  // 最後に閲覧してから5分未満の場合は何もしない
-  if (lastViewed && (now - lastViewed) < 5 * 60 * 1000) {
-    return res.status(200).json({ message: '閲覧数は更新されませんでした。' });
-  }
-
-  // 5分以上経過していれば閲覧数を増やす
+  const userId = req.user ? req.user._id.toString() : req.ip;
+  const userKey = `post:${postId}:viewer:${userId}`; // ユーザーごとの閲覧キー
+  const viewKey = `post:viewCount:${postId}`; // 投稿ごとの閲覧数キー
+  const viewTTL = 300; // 5分（300秒）
+  
   try {
-    const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).json({ message: '投稿が見つかりません。' });
+    await ensureRedisConnection();
+
+    // Redisにユーザーの閲覧があるかチェック
+    const alreadyViewed = await redisClient.exists(userKey);
+
+    if (alreadyViewed) {
+      return res.status(200).json({ message: '閲覧数は更新されませんでした。' });
     }
 
-    post.viewCounter += 1;
-    await post.save();
-    viewTracking.set(key, now); // 閲覧時間を更新
+    // ユーザーが5分以上経過している場合に、Redisにキーを設定して5分間のTTLを追加
+    await redisClient.set(userKey, '1', 'EX', viewTTL);
 
-    res.status(200).json({ viewCounter: post.viewCounter });
+    // Redisで投稿ごとの閲覧カウントをインクリメント
+    await redisClient.incr(viewKey);
+
+    res.status(200).json({ message: '閲覧数が一時的に更新されました。' });
   } catch (error) {
     console.error('Error updating view counter:', error);
     res.status(500).json({ message: '閲覧数の更新に失敗しました。', error });
   }
 });
+// 定期バッチ処理 - RedisからMongoDBに閲覧数を保存
+cron.schedule('*/5 * * * *', async () => {  // 5分ごとに実行
+  console.log('Running batch job to update view counts in MongoDB');
+  try {
+    await ensureRedisConnection();
 
+    // Redisからすべての閲覧カウントキーを取得
+    const keys = await redisClient.keys('post:viewCount:*');
+
+    for (const key of keys) {
+      const postId = key.split(':')[2]; // キーからpostIdを取得
+      const viewCount = await redisClient.get(key); // 閲覧数を取得
+
+      // MongoDBに閲覧数を反映
+      if (viewCount) {
+        await Post.findByIdAndUpdate(postId, { $inc: { viewCounter: parseInt(viewCount, 10) } });
+        await redisClient.del(key); // Redisでカウントをリセット
+      }
+    }
+    console.log('View counts successfully updated in MongoDB');
+  } catch (error) {
+    console.error('Error during batch update of view counts:', error);
+  }
+});
 // 作品の検索エンドポイント
 // server.js に追加
 router.get('/search', async (req, res) => {

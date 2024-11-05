@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const cookieParser = require('cookie-parser');  // cookie-parser をインポート
+const { client: redisClient, ensureRedisConnection } = require('./utils/redisClient');
 
 //モデルのインポート
 const User = require('./models/User');
@@ -32,6 +33,7 @@ const commentRoutes = require('./routes/comments');
 const followRoutes = require('./routes/follow');
 const bookshelfRoutes = require('./routes/bookshelf');
 const tagRoutes = require('./routes/tags');
+
 
 const app = express();
 app.disable("x-powered-by");
