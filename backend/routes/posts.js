@@ -5,6 +5,7 @@ const authenticateToken = require('../middlewares/authenticateToken');
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Good = require('../models/Good');
+const ViewAnalytics = require('../models/ViewAnalytics');
 const Series = require('../models/Series');
 const Follow = require('../models/Follow'); // Followモデルのインポート
 const multer = require('multer');
@@ -208,31 +209,39 @@ router.post('/:id([0-9a-fA-F]{24})/view', async (req, res) => {
   const userKey = `post:${postId}:viewer:${userId}`; // ユーザーごとの閲覧キー
   const viewKey = `post:viewCount:${postId}`; // 投稿ごとの閲覧数キー
   const viewTTL = 300; // 5分（300秒）
-  
+  console.log(userKey)
+  console.log(viewKey)
   try {
+    console.log('Ensuring Redis connection...');
     await ensureRedisConnection();
+    console.log('Redis connection ensured.');
+  
+    console.log(`Setting Redis key: ${userKey} with TTL: ${viewTTL}`);
+// ユーザーが5分以上経過している場合にのみキーを設定
+const isSet = await redisClient.set(userKey, '1', {
+  NX: true, // キーが存在しない場合のみ設定
+  EX: viewTTL, // 有効期限を設定
+});
 
-    // Redisにユーザーの閲覧があるかチェック
-    const alreadyViewed = await redisClient.exists(userKey);
-
-    if (alreadyViewed) {
-      return res.status(200).json({ message: '閲覧数は更新されませんでした。' });
-    }
-
-    // ユーザーが5分以上経過している場合に、Redisにキーを設定して5分間のTTLを追加
-    await redisClient.set(userKey, '1', 'EX', viewTTL);
-
-    // Redisで投稿ごとの閲覧カウントをインクリメント
+if (!isSet) {
+  console.log('Key already exists. Skipping view count update.');
+  return res.status(200).json({ message: '閲覧数は更新されませんでした。' });
+}
+    console.log(`Key ${userKey} set with TTL.`);
+  
+    console.log(`Incrementing view count for ${viewKey}`);
     await redisClient.incr(viewKey);
-
+    console.log(`View count incremented for ${viewKey}`);
+  
     res.status(200).json({ message: '閲覧数が一時的に更新されました。' });
   } catch (error) {
     console.error('Error updating view counter:', error);
-    res.status(500).json({ message: '閲覧数の更新に失敗しました。', error });
+    res.status(500).json({ message: '閲覧数の更新に失敗しました。', error: error.message });
   }
+  
 });
 // 定期バッチ処理 - RedisからMongoDBに閲覧数を保存
-cron.schedule('*/5 * * * *', async () => {  // 5分ごとに実行
+cron.schedule('*/1 * * * *', async () => {  // 5分ごとに実行
   console.log('Running batch job to update view counts in MongoDB');
   try {
     await ensureRedisConnection();
@@ -247,6 +256,18 @@ cron.schedule('*/5 * * * *', async () => {  // 5分ごとに実行
       // MongoDBに閲覧数を反映
       if (viewCount) {
         await Post.findByIdAndUpdate(postId, { $inc: { viewCounter: parseInt(viewCount, 10) } });
+           // MongoDBのViewAnalyticsモデルに新しい記録を追加
+        const timestamp = new Date(); // 現在の時刻を取得
+        // MongoDBに閲覧数を反映（viewsに新しいデータを追加）
+        await ViewAnalytics.findOneAndUpdate(
+          { postId },
+          {
+            $push: {
+              views: { timestamp, count: parseInt(viewCount, 10) },
+            },
+          },
+          { upsert: true } // 存在しない場合は新規作成
+        );
         await redisClient.del(key); // Redisでカウントをリセット
       }
     }

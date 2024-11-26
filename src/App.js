@@ -16,6 +16,7 @@ import PostEditPage from './pages/PostEditPage';
 import WorksInSeries from './pages/WorksInSeries';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import AnalytisPage from './pages/AnalytisPage';
 
 const theme = createTheme();
 
@@ -88,6 +89,7 @@ function App() {
             <Route path="/mypage/series/:id/edit" element={<SeriesEditPage />} />
             <Route path="/mypage/novel/:id/edit" element={<PostEditPage />} />
             <Route path="/series/:id/works" element={<WorksInSeries />} />  {/* ここにルートを追加 */}
+            <Route path="/analytics/:id" element={<AnalytisPage />} />  {/* ここにルートを追加 */}
 
           </Routes>
         </Layout>

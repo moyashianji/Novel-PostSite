@@ -33,6 +33,7 @@ const commentRoutes = require('./routes/comments');
 const followRoutes = require('./routes/follow');
 const bookshelfRoutes = require('./routes/bookshelf');
 const tagRoutes = require('./routes/tags');
+const viewanalytics = require('./routes/analytics');
 
 
 const app = express();
@@ -115,7 +116,7 @@ app.use('/api', commentRoutes);
 app.use('/api', followRoutes);
 app.use('/api', bookshelfRoutes);
 app.use('/api', tagRoutes);
-
+app.use('/api', viewanalytics);
 // エラーハンドリング
 app.use((err, req, res, next) => {
   console.error(err.stack);
