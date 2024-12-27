@@ -58,6 +58,7 @@ const UserPage = () => {
   const [filteredWorks, setFilteredWorks] = useState([]);
   const [selectedTag, setSelectedTag] = useState('');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
   const navigate = useNavigate();
   const API_URL = process.env.REACT_APP_API_URL;
 
@@ -67,11 +68,9 @@ const UserPage = () => {
         const response = await fetch(`${API_URL}/api/users/${id}`);
         const data = await response.json();
         setUser(data);
-
+        setFollowerCount(data.followerCount);
         const followStatusResponse = await fetch(`${API_URL}/api/users/${id}/is-following`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
+          credentials: 'include',  // クッキーを含めてリクエストを送信
         });
         const followStatus = await followStatusResponse.json();
         setIsFollowing(followStatus.isFollowing);
@@ -119,12 +118,9 @@ const UserPage = () => {
   };
 
   const handleFollowToggle = async () => {
-    if (!localStorage.getItem('token')) {
-      navigate('/login');
-      return;
-    }
 
     try {
+
       const url = isFollowing
         ? `${API_URL}/api/users/unfollow/${id}`
         : `${API_URL}/api/users/follow/${id}`;
@@ -132,17 +128,21 @@ const UserPage = () => {
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        credentials: 'include',  // クッキーを含めてリクエストを送信
       });
+      if (!response.ok) {
+
+        navigate('/login'); // ログインページにリダイレクト
+        return;
+      }
 
       if (response.ok) {
         setIsFollowing(!isFollowing);
-        setUser((prevUser) => ({
-          ...prevUser,
-          followerCount: prevUser.followerCount + (isFollowing ? -1 : 1),
-        }));
+
+        const response = await fetch(`${API_URL}/api/users/${id}`);
+        const data = await response.json();
+        setFollowerCount(data.followerCount);
+
       } else {
         console.error('Error toggling follow status:', await response.json());
       }
@@ -163,7 +163,7 @@ const UserPage = () => {
             <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
               {user.description}
             </Typography>
-            <Typography variant="body2">フォロワー数: {user.followerCount}</Typography>
+            <Typography variant="body2">フォロワー数: {followerCount}</Typography>
           </Box>
         </Box>
         <Button

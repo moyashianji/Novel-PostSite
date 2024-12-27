@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
 import PostCard from '../components/PostCard';
 import PVRanking from '../components/PVRanking.js';  // 正しいパスでインポート
-import { Box, Typography, Grid, Pagination, Button, TextField, IconButton } from '@mui/material';
+import { Box, Typography, Grid, Pagination, Button, TextField, IconButton, Paper } from '@mui/material';
 import PopularTags from '../components/PopularTags'; // 人気タグのコンポーネントをインポート
 import { Delete as DeleteIcon } from '@mui/icons-material'; // 削除アイコンをインポート
+import { Link } from 'react-router-dom';
 
 const Home = ({ auth }) => {
   const [posts, setPosts] = useState([]);
@@ -14,39 +15,144 @@ const Home = ({ auth }) => {
   const [newTag, setNewTag] = useState('');
   const [isPending, startTransition] = useTransition();  // useTransitionを使用
   const [text, setText] = useState({});  // 各タグ入力用の一時的な状態
+  const [announcements, setAnnouncements] = useState([]); // 運営からのお知らせ
+  const ADMIN_USER_ID = '66c360d0dd9964e79ab728b6';
+
   const API_URL = process.env.REACT_APP_API_URL;
+  const MAX_ANNOUNCEMENTS_DISPLAY = 5; // 表示する最大数
 
   useEffect(() => {
     const fetchPosts = async (page = 1) => {
       try {
         const response = await fetch(`${API_URL}/api/posts?page=${page}`);
         const data = await response.json();
-            // カスタムヘッダーを取得する
-    const proxyStatus = response.headers.get('X-Proxy-Status');
-    
-    // ヘッダー情報を画面に表示
-    console.log(proxyStatus);  // "Served via Nginx"と表示されます
- 
+        // カスタムヘッダーを取得する
+        const proxyStatus = response.headers.get('X-Proxy-Status');
+
+        // ヘッダー情報を画面に表示
+        console.log(proxyStatus);  // "Served via Nginx"と表示されます
+
         startTransition(() => {
 
-        setPosts(data.posts);
-        setTotalPages(data.totalPages);
-        setCurrentPage(data.currentPage);
-      });
+          setPosts(data.posts);
+          setTotalPages(data.totalPages);
+          setCurrentPage(data.currentPage);
+        });
 
       } catch (error) {
         console.error('Error fetching posts:', error);
       }
     };
 
+    const fetchAnnouncements = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/users/${ADMIN_USER_ID}/works`);
+        if (response.ok) {
+          const data = await response.json();
+          const sortedAnnouncements = data.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          ); // 新しい投稿ほど上に表示
+          setAnnouncements(sortedAnnouncements);
+        } else {
+          console.error('Failed to fetch announcements');
+        }
+      } catch (error) {
+        console.error('Error fetching announcements:', error);
+      }
+    };
+
+
     fetchPosts(currentPage);
+    fetchAnnouncements();
 
+  }, [auth, currentPage, ADMIN_USER_ID]);
 
-  }, [auth, currentPage]);
 
   const handleChangePage = useCallback((event, value) => {
     setCurrentPage(value);
   }, []);
+  const renderedAnnouncements = useMemo(() => (
+    <Paper elevation={3} sx={{ padding: 2, marginBottom: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        お知らせ
+      </Typography>
+      {announcements.length > 0 ? (
+        <ul style={{ paddingLeft: 16, margin: 0 }}>
+          {announcements.slice(0, MAX_ANNOUNCEMENTS_DISPLAY).map((post, index) => (
+            <React.Fragment key={post._id}>
+              <li
+                key={post._id}
+                style={{
+                  marginBottom: '1px',
+                  transition: 'background-color 0.3s',
+                  borderRadius: '4px',
+                }}
+              >
+                <Link
+                  to={`/novel/${post._id}`}
+                  style={{
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    padding: '8px',
+                    display: 'block',
+                    borderRadius: '4px',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f0f0f0')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      wordBreak: 'break-word', // 折り返しを許可
+                      whiteSpace: 'pre-wrap',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {post.title}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      marginTop: '4px',
+                      fontSize: '12px',
+                      color: 'gray',
+                    }}
+                  >
+                    {new Date(post.createdAt).toLocaleString()}
+                  </Typography>
+                </Link>
+              </li>
+              {/* 投稿の間に水平線を挿入（最後の要素を除く） */}
+              {index < announcements.slice(0, MAX_ANNOUNCEMENTS_DISPLAY).length - 1 && (
+                <hr style={{ border: 'none', borderTop: '1px solid #ddd', margin: '1px 0' }} />
+              )}
+            </React.Fragment>
+          ))}
+        </ul>
+      ) : (
+        <Typography variant="body2" color="textSecondary">
+          現在お知らせはありません。
+        </Typography>
+      )}
+      {announcements.length > MAX_ANNOUNCEMENTS_DISPLAY && (
+        <Box textAlign="center" mt={2}>
+          <Button
+            variant="text"
+            color="primary"
+            component={Link}
+            to={`/user/${ADMIN_USER_ID}`}
+            style={{ textDecoration: 'none' }}
+          >
+            もっと見る
+          </Button>
+        </Box>
+      )}
+    </Paper>
+  ), [announcements]);
+
 
   // ユーザーのタグ情報を取得する
   const fetchUserTags = useCallback(async () => {
@@ -58,23 +164,23 @@ const Home = ({ auth }) => {
         credentials: 'include',  // 認証情報を含めてリクエスト
       });
       const data = await response.json();
-      
+
       const fetchedTagContainers = data.tagContainers || [];  // tagContainersがundefinedの場合に空配列をセット
       console.log('Fetched tag containers:', fetchedTagContainers); // コンテナの状態を確認
       startTransition(() => {
 
-      setTagContainers(fetchedTagContainers);
+        setTagContainers(fetchedTagContainers);
 
-      // 各タグに関連する投稿を取得
-      fetchedTagContainers.forEach((container, index) => {
-        if (container.tag) {
-          console.log(`Fetching posts for tag: ${container.tag}, index: ${index}`);
-          fetchPostsByTag(index, container.tag);  // 各タグに対応する投稿を取得
-        }
-      });  
-    });
+        // 各タグに関連する投稿を取得
+        fetchedTagContainers.forEach((container, index) => {
+          if (container.tag) {
+            console.log(`Fetching posts for tag: ${container.tag}, index: ${index}`);
+            fetchPostsByTag(index, container.tag);  // 各タグに対応する投稿を取得
+          }
+        });
+      });
 
-      } catch (error) {
+    } catch (error) {
       console.error('Error fetching user tags:', error);
     }
   }, [auth]);
@@ -111,7 +217,7 @@ const Home = ({ auth }) => {
     if (tagContainers.length >= 10) return; // 最大10個まで
     startTransition(() => {
 
-    setTagContainers([...tagContainers, { tag: '', posts: [], page: 1, totalPages: 1 }]);
+      setTagContainers([...tagContainers, { tag: '', posts: [], page: 1, totalPages: 1 }]);
     });
   }, [tagContainers]);
 
@@ -128,7 +234,7 @@ const Home = ({ auth }) => {
       [index]: value
     }));
   }, []);
-    // 依存関係から tagContainers を除外し、初期化後に一度だけ実行
+  // 依存関係から tagContainers を除外し、初期化後に一度だけ実行
   // タグに関連する投稿を取得する処理
   const fetchPostsByTag = useCallback(async (index, tag, page = 1) => {
     if (!tagContainers[index]) {
@@ -142,16 +248,16 @@ const Home = ({ auth }) => {
       console.log(data.posts)
       startTransition(() => {
 
-      const updatedContainers = [...tagContainers];
-      updatedContainers[index].posts = data.posts;  // postsがundefinedの場合に空配列
-      updatedContainers[index].totalPages = data.totalPages;
-      updatedContainers[index].page = data.currentPage;
-      updatedContainers[index].fetched = true; // 投稿取得済みフラグ
+        const updatedContainers = [...tagContainers];
+        updatedContainers[index].posts = data.posts;  // postsがundefinedの場合に空配列
+        updatedContainers[index].totalPages = data.totalPages;
+        updatedContainers[index].page = data.currentPage;
+        updatedContainers[index].fetched = true; // 投稿取得済みフラグ
 
-      console.log('Updated containers:', updatedContainers); // 更新されたコンテナを確認
+        console.log('Updated containers:', updatedContainers); // 更新されたコンテナを確認
 
-      setTagContainers(updatedContainers);
-    });
+        setTagContainers(updatedContainers);
+      });
 
     } catch (error) {
       console.error('Error fetching posts by tag:', error);
@@ -163,7 +269,7 @@ const Home = ({ auth }) => {
       tagContainers.forEach((container, index) => {
         if (container.tag && !container.fetched) {  // まだ取得されていない場合のみ取得
           console.log(`Fetching posts for tag: ${container.tag}, index: ${index}`);
-      
+
           fetchPostsByTag(index, container.tag);
         }
       });
@@ -172,7 +278,7 @@ const Home = ({ auth }) => {
   useEffect(() => {
     if (auth) {
       fetchUserTags();  // ページ読み込み時にユーザーのタグコンテナ情報を取得
-          console.log('Initial tag containers:', tagContainers); // ここで初期化の確認
+      console.log('Initial tag containers:', tagContainers); // ここで初期化の確認
 
     }
   }, [auth]);
@@ -182,36 +288,36 @@ const Home = ({ auth }) => {
     fetchPostsByTag(index, tag, value);
   }, [tagContainers, fetchPostsByTag]);
   // タグコンテナ削除
-// タグコンテナ削除
-const handleDeleteTagContainer = useCallback(async (index) => {
-  try {
-    // サーバーに削除リクエストを送信
-    const response = await fetch(`${API_URL}/api/users/tags/${index}`, {
-      method: 'DELETE',
-      credentials: 'include',  // 認証情報を含めてリクエスト
-    });
-
-    if (response.ok) {
-      startTransition(() => {
-        // フロントエンドでもタグコンテナを削除し、インデックスを詰める
-        const updatedContainers = [...tagContainers];
-        updatedContainers.splice(index, 1); // 指定したコンテナを削除
-
-        // インデックスを詰める処理
-        const updatedContainersWithCorrectIndex = updatedContainers.map((container, newIndex) => ({
-          ...container,
-          index: newIndex,  // 新しいインデックスを割り当て
-        }));
-
-        setTagContainers(updatedContainersWithCorrectIndex);
+  // タグコンテナ削除
+  const handleDeleteTagContainer = useCallback(async (index) => {
+    try {
+      // サーバーに削除リクエストを送信
+      const response = await fetch(`${API_URL}/api/users/tags/${index}`, {
+        method: 'DELETE',
+        credentials: 'include',  // 認証情報を含めてリクエスト
       });
-    } else {
-      console.error('Error deleting tag on server');
+
+      if (response.ok) {
+        startTransition(() => {
+          // フロントエンドでもタグコンテナを削除し、インデックスを詰める
+          const updatedContainers = [...tagContainers];
+          updatedContainers.splice(index, 1); // 指定したコンテナを削除
+
+          // インデックスを詰める処理
+          const updatedContainersWithCorrectIndex = updatedContainers.map((container, newIndex) => ({
+            ...container,
+            index: newIndex,  // 新しいインデックスを割り当て
+          }));
+
+          setTagContainers(updatedContainersWithCorrectIndex);
+        });
+      } else {
+        console.error('Error deleting tag on server');
+      }
+    } catch (error) {
+      console.error('Error deleting tag:', error);
     }
-  } catch (error) {
-    console.error('Error deleting tag:', error);
-  }
-}, [tagContainers]);
+  }, [tagContainers]);
   const renderedTagContainers = useMemo(() => tagContainers.map((container, index) => (
     <Grid item xs={12} sm={6} key={index}>
       <Box
@@ -267,6 +373,7 @@ const handleDeleteTagContainer = useCallback(async (index) => {
 
   return (
     <Grid container spacing={1} sx={{ maxWidth: '1400px', margin: '0 auto', paddingTop: 4 }}>
+
       <Grid item xs={12} md={2.5} sx={{ paddingLeft: 1 }}>
         <Box sx={{ paddingRight: 1 }}>
           <PopularTags />
@@ -327,7 +434,9 @@ const handleDeleteTagContainer = useCallback(async (index) => {
 
       <Grid item xs={12} md={2.5} sx={{ paddingRight: 1 }}>
         <Box sx={{ paddingLeft: 1 }}>
-          <PVRanking />
+          {renderedAnnouncements}
+
+          <PVRanking />     
         </Box>
       </Grid>
     </Grid>

@@ -15,4 +15,4 @@ const ViewAnalyticsSchema = new mongoose.Schema({
   ],
 });
 
-module.exports = mongoose.model('ViewCounts', ViewAnalyticsSchema);
+module.exports = mongoose.model('viewcounts', ViewAnalyticsSchema);

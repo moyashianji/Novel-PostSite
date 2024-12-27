@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Card, CardContent } from '@mui/material';
-import { useParams } from 'react-router-dom';
+import { useParams ,Link} from 'react-router-dom';
+
+
+
 
 const WorksInSeries = () => {
   const { id } = useParams();
@@ -32,12 +35,15 @@ const WorksInSeries = () => {
         {works.sort((a, b) => a.episodeNumber - b.episodeNumber).map((work) => (
           <Card key={work._id} sx={{ mb: 2 }}>
             <CardContent>
+            <Link to={`/novel/${work._id}`}  style={{ textDecoration: 'none', color: 'inherit' }}>
+
               <Typography variant="h6">
                 {work.episodeNumber}. {work.title}
               </Typography>
               <Typography variant="body2" color="textSecondary">
                 {work.description}
               </Typography>
+            </Link>
             </CardContent>
           </Card>
         ))}

@@ -1,6 +1,7 @@
 // routes/post.js
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const authenticateToken = require('../middlewares/authenticateToken');
 const User = require('../models/User');
 const Post = require('../models/Post');
@@ -201,9 +202,18 @@ router.get('/:id([0-9a-fA-F]{24})/edit', authenticateToken, async (req, res) => 
   }
 });
 
+// 個別の:idに対するRate Limiter
+const viewRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1分間
+  max: 5, // 同じIDに対して5リクエストまで
+  keyGenerator: (req) => `${req.params.id}:${req.ip}`, // リクエストを制限するキーを生成
+  message: { message: '1分間に5回以上リクエストすることはできません。' },
+  standardHeaders: true, // レート制限情報を標準ヘッダーに記載
+  legacyHeaders: false, // 古いX-RateLimitヘッダーを無効化
+});
 
 // 閲覧数更新エンドポイント
-router.post('/:id([0-9a-fA-F]{24})/view', async (req, res) => {
+router.post('/:id([0-9a-fA-F]{24})/view', viewRateLimiter,async (req, res) => {
   const postId = req.params.id;
   const userId = req.user ? req.user._id.toString() : req.ip;
   const userKey = `post:${postId}:viewer:${userId}`; // ユーザーごとの閲覧キー

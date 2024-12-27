@@ -248,9 +248,10 @@ const CommentSection = ({ postId }) => {
         inputProps={{ maxLength: 300 }}
         sx={{ mb: 2 }}
       />
-      <Typography variant="caption">
+      <Typography variant="h6">
         {charCount}/300
       </Typography>
+
       <Button variant="contained" color="primary" onClick={handleCommentSubmit} sx={{ mt: 2 }}>
         コメントを投稿
       </Button>

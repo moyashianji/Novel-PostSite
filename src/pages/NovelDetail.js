@@ -31,81 +31,78 @@ const NovelDetail = () => {
   const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
+    let isMounted = true; // コンポーネントがマウントされているかどうかを追跡
+
     const fetchPost = async () => {
       try {
         const response = await fetch(`${API_URL}/api/posts/${id}`);
-
         const data = await response.json();
-        setPost(data);
-        setGoodCount(data.goodCounter);
-        setViewCount(data.viewCounter);
-        setBookshelfCount(data.bookShelfCounter);
 
-        // シリーズの投稿を取得
+        if (isMounted) {
+          setPost(data);
+          setGoodCount(data.goodCounter);
+          setViewCount(data.viewCounter);
+          setBookshelfCount(data.bookShelfCounter);
 
-        // シリーズの投稿を取得
-        if (data.series) {
-          console.log('Series ID:', data.series);  // Series IDのデバッグメッセージ
+          // シリーズの投稿を取得
+          if (data.series) {
+            console.log('Series ID:', data.series);
 
-          const seriesResponse = await fetch(`${API_URL}/api/series/${data.series}/posts`);
-          const seriestitleResponse = await fetch(`${API_URL}/api/series/${data.series}/title`);
+            const seriesResponse = await fetch(`${API_URL}/api/series/${data.series}/posts`);
+            const seriestitleResponse = await fetch(`${API_URL}/api/series/${data.series}/title`);
 
-          console.log('Series API response status:', seriesResponse.status);  // レスポンスステータスのデバッグメッセージ
-
-          if (seriesResponse.ok || seriestitleResponse.ok) {
-            const seriesData = await seriesResponse.json();
-            const seriesTitleData = await seriestitleResponse.json();
-            setSeriesPosts(seriesData);
-            setSeriesTitle(seriesTitleData);
-            console.log('Series posts title:', seriesData);  // 取得したデータのデバッグメッセージ
-
+            if (seriesResponse.ok && seriestitleResponse.ok) {
+              const seriesData = await seriesResponse.json();
+              const seriesTitleData = await seriestitleResponse.json();
+              setSeriesPosts(seriesData);
+              setSeriesTitle(seriesTitleData);
+            } else {
+              const errorText = await seriesResponse.text();
+              console.error('Failed to fetch series posts:', errorText);
+            }
           } else {
-            const errorText = await seriesResponse.text();
-            console.error('Failed to fetch series posts:', errorText);  // エラーメッセージのデバッグ
+            console.log('No series found for this post');
           }
-        } else {
-          console.log('No series found for this post');  // シリーズが見つからなかった場合のデバッグメッセージ
-        }
 
-        await fetch(`${API_URL}/api/posts/${id}/view`, {
-          method: 'POST',
-        });
-        console.error('viewcount');
+          // 閲覧数のカウントを更新
+          await fetch(`${API_URL}/api/posts/${id}/view`, { method: 'POST' });
 
-        const token = localStorage.getItem('token');
-
-        if (token) {
+          // ログイン済みのユーザーの状態を確認
           const likeResponse = await fetch(`${API_URL}/api/posts/${id}/isLiked`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            credentials: 'include',  // クッキーを含めてリクエストを送信
+
           });
           const likeData = await likeResponse.json();
           setHasLiked(likeData.hasLiked);
 
           const bookshelfResponse = await fetch(`${API_URL}/api/posts/${id}/isInBookshelf`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            credentials: 'include',  // クッキーを含めてリクエストを送信
+
           });
           const bookshelfData = await bookshelfResponse.json();
           setIsInBookshelf(bookshelfData.isInBookshelf);
 
           const followResponse = await fetch(`${API_URL}/api/users/${data.author._id}/is-following`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            credentials: 'include',  // クッキーを含めてリクエストを送信
+
           });
           const followData = await followResponse.json();
           setIsFollowing(followData.isFollowing);
         }
+
       } catch (error) {
-        console.error('Failed to fetch post:', error);
+        if (isMounted) {
+          console.error('Failed to fetch post:', error);
+        }
       }
     };
 
     fetchPost();
-  }, [id]);
+
+    return () => {
+      isMounted = false; // クリーンアップ時にマウント状態を解除
+    };
+  }, [id, API_URL]); // 依存配列に`id`と`API_URL`を指定
 
   useEffect(() => {
     if (location.state?.scrollTo) {
@@ -117,18 +114,11 @@ const NovelDetail = () => {
 
   const handleGoodClick = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('ログインが必要です');
-        return;
-      }
 
       const response = await fetch(`${API_URL}/api/posts/${id}/good`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',  // クッキーを含めてリクエストを送信
+
       });
 
       if (response.ok) {
@@ -146,18 +136,10 @@ const NovelDetail = () => {
 
   const handleBookshelfClick = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('ログインが必要です');
-        return;
-      }
 
       const response = await fetch(`${API_URL}/api/posts/${id}/bookshelf`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',  // クッキーを含めてリクエストを送信
       });
 
       if (response.ok) {
@@ -180,20 +162,12 @@ const NovelDetail = () => {
   const handleTextClick = async (event) => {
     if (isBookmarkMode) {
       const bookmarkPosition = window.scrollY + event.clientY;
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        alert('ログインが必要です');
-        return;
-      }
 
       try {
         const response = await fetch(`${API_URL}/api/me/bookmark`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          credentials: 'include',  // クッキーを含めてリクエストを送信
+
           body: JSON.stringify({
             novelId: id,
             position: bookmarkPosition,
@@ -215,13 +189,9 @@ const NovelDetail = () => {
   };
 
   const handleFollowToggle = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
 
     try {
+
       const url = isFollowing
         ? `${API_URL}/api/users/unfollow/${post.author._id}`
         : `${API_URL}/api/users/follow/${post.author._id}`;
@@ -229,10 +199,13 @@ const NovelDetail = () => {
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',  // クッキーを含めてリクエストを送信
       });
+      if (!response.ok) {
+
+        navigate('/login'); // ログインページにリダイレクト
+        return;
+      }
 
       if (response.ok) {
         setIsFollowing(!isFollowing);
@@ -248,7 +221,6 @@ const NovelDetail = () => {
     setSelectedPostId(newPostId);
     navigate(`/novel/${newPostId}`);
   };
-
 
   const handleTagClick = (tag) => {
     navigate(`/search?query=${encodeURIComponent(tag)}`);

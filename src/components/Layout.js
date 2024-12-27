@@ -83,7 +83,7 @@ const Layout = ({ children, auth, setAuth }) => {
         setAuth(false);
         navigate('/login'); // ログアウト後にログイン画面に遷移
       } else {
-        console.error('Logout failed',response);
+        console.error('Logout failed', response);
       }
     } catch (error) {
       console.error('Error logging out', error);
@@ -106,17 +106,66 @@ const Layout = ({ children, auth, setAuth }) => {
     <div>
       <AppBar position="fixed">
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-          {/* 左側のロゴリンク */}
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="main page"
-            component={Link}
-            to="/"
-            sx={{ marginRight: 2 }}
-          >
-            <img src="/logo.png" alt="logo" style={{ height: '40px' }} />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', marginRight: 2 }}>
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="main page"
+              component={Link}
+              to="/"
+              sx={{ marginRight: 1 }}
+            >
+              <img
+                src="./logo.png"
+                alt="logo"
+                style={{
+                  height: '40px',
+                  width: '40px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                }}
+              />
+            </IconButton>
+            <Box
+              component={Link}
+              to="/"
+              sx={{
+                textDecoration: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: "'Dancing Script', cursive",
+                  fontSize: '28px',
+                  fontWeight: 'bold',
+                  lineHeight: '1', // 行間を詰める
+                  margin: '0', // 不要な余白を削除
+                  padding: '0', // パディングを削除
+                }}
+              >
+                すみわけ
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: "'Roboto', sans-serif",
+                  fontSize: '12px',
+                  fontWeight: 'light',
+                  color: 'white',
+                  textAlign: 'center',
+                  lineHeight: '1', // 行間を詰める
+                  margin: '0', // 不要な余白を削除
+                  padding: '0', // パディングを削除
+                }}
+              >
+                AI小説投稿サイト
+              </Typography>
+            </Box>
+          </Box>
 
           {/* 中央の検索ボックス */}
           <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>

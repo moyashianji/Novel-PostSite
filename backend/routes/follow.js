@@ -20,6 +20,7 @@ router.post('/users/follow/:id([0-9a-fA-F]{24})', authenticateToken, async (req,
 
     const followee = await User.findById(followeeId);
     const follower = await User.findById(followerId);
+    let updatedFollowerCounter;
 
     if (!followee || !follower) {
       return res.status(404).json({ message: "ユーザーが見つかりません。" });
@@ -29,6 +30,9 @@ router.post('/users/follow/:id([0-9a-fA-F]{24})', authenticateToken, async (req,
     if (!followee.followers.includes(followerId)) {
       followee.followers.push(followerId);
       await followee.save();
+    
+      updatedFollowerCounter = followee.followerCount + 1;
+      await User.findByIdAndUpdate(followeeId, { followerCount: updatedFollowerCounter});
     }
 
     // フォローしているユーザーリストに追加
@@ -53,6 +57,7 @@ router.delete('/users/unfollow/:id([0-9a-fA-F]{24})', authenticateToken, async (
     const followee = await User.findById(followeeId);
     const follower = await User.findById(followerId);
 
+    let updatedFollowerCounter;
     if (!followee || !follower) {
       return res.status(404).json({ message: "ユーザーが見つかりません。" });
     }
@@ -63,6 +68,9 @@ router.delete('/users/unfollow/:id([0-9a-fA-F]{24})', authenticateToken, async (
     );
     await followee.save();
 
+    updatedFollowerCounter = followee.followerCount - 1;
+    await User.findByIdAndUpdate(followeeId,{followerCount: updatedFollowerCounter});
+  
     // フォローリストから削除
     follower.following = follower.following.filter(
       (id) => id.toString() !== followeeId.toString()

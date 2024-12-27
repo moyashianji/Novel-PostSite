@@ -5,10 +5,17 @@ const ViewAnalytics = require('../models/ViewAnalytics');
 
 router.get('/:id/analytics', async (req, res) => {
   const { id } = req.params;
-
+  console.log('test')
+  console.log(id);
+  
   try {
+    console.log('testt')
+
     const analytics = await ViewAnalytics.findOne({ postId: id });
+    console.log(analytics)
     if (!analytics) {
+      console.log('testtt')
+
       return res.status(404).json({ message: 'Analytics data not found' });
     }
 

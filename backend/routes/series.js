@@ -93,19 +93,23 @@ router.get('/:id([0-9a-fA-F]{24})', authenticateToken, async (req, res) => {
 router.get('/:id([0-9a-fA-F]{24})/posts', async (req, res) => {
   try {
     const seriesId = req.params.id;
+
+    // シリーズを取得し、posts.postId をポピュレート
     const series = await Series.findById(seriesId).populate('posts.postId');
 
     if (!series) {
       return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
     }
 
+    // エピソード番号の小さい順に並び替え
     const postsWithEpisodes = series.posts
-      .filter(post => post.postId)
+      .filter(post => post.postId) // 無効なpostIdを除外
       .map(post => ({
         _id: post.postId._id,
         title: post.postId.title,
         episodeNumber: post.episodeNumber,
-      }));
+      }))
+      .sort((a, b) => a.episodeNumber - b.episodeNumber); // 並び替え
 
     res.status(200).json(postsWithEpisodes);
   } catch (error) {
