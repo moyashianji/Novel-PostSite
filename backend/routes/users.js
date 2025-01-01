@@ -7,6 +7,7 @@ const Post = require('../models/Post');
 const Good = require('../models/Good');
 const Series = require('../models/Series');
 const Follow = require('../models/Follow'); // Followモデルのインポート
+const Contest = require('../models/Contest'); // Contestモデル
 
 const upload = require('../middlewares/upload');
 
@@ -312,6 +313,22 @@ router.delete('/tags/:index',authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error removing tag:', error);
     res.status(500).json({ message: 'タグの削除中にエラーが発生しました' });
+  }
+});
+
+// ユーザーが主催しているコンテストを取得するエンドポイント
+router.get('/me/contests', authenticateToken, async (req, res) => {
+  try {
+    // 現在ログインしているユーザーのIDを取得
+    const userId = req.user._id;
+
+    // 主催しているコンテストを取得
+    const contests = await Contest.find({ creator: userId }).sort({ createdAt: -1 });
+
+    res.status(200).json(contests);
+  } catch (error) {
+    console.error('Error fetching user contests:', error);
+    res.status(500).json({ message: 'コンテストの取得に失敗しました。', error });
   }
 });
 module.exports = router;

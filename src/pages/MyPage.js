@@ -12,6 +12,8 @@ const MyPage = () => {
   const [likedPosts, setLikedPosts] = useState([]);
   const [bookshelf, setBookshelf] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
+  const [contests, setContests] = useState([]);
+
   const [displayedContent, setDisplayedContent] = useState('works');
   const API_URL = process.env.REACT_APP_API_URL;
 
@@ -163,7 +165,22 @@ const MyPage = () => {
       console.error('Error fetching bookmarks:', error);
     }
   };
-
+  const fetchContests = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/users/me/contests`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const contestsData = await response.json();
+        setContests(contestsData);
+        setDisplayedContent('contests');
+      } else {
+        console.error('Failed to fetch contests');
+      }
+    } catch (error) {
+      console.error('Error fetching contests:', error);
+    }
+  };
   useEffect(() => {
     fetchUserData();
     fetchMyWorks(); // ページロード時に自分の作品一覧を表示
@@ -172,7 +189,9 @@ const MyPage = () => {
   const handleProfileUpdate = (updatedUser) => {
     setUser(updatedUser); // プロフィール情報を更新
   };
-
+  const handleAddContest = () => {
+    navigate('/contests/create'); // コンテスト作成画面に遷移
+  };
   const handleCardClick = (url) => {
     navigate(url);
   };
@@ -188,6 +207,48 @@ const MyPage = () => {
   };
   const renderContent = () => {
     switch (displayedContent) {
+      case 'contests':
+        return (
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              自分が主催するコンテスト一覧
+            </Typography>
+            {contests.length > 0 ? (
+              contests.map((contest) => (
+                <Card key={contest._id} sx={{ marginBottom: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6">{contest.title}</Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {contest.description}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      状態: {contest.status}
+                    </Typography>
+                    <Box sx={{ marginTop: 2 }}>
+                      <Button
+                        variant="outlined"
+                        onClick={() => navigate(`/contests/${contest._id}`)}
+                      >
+                        詳細を見る
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Typography variant="body1">主催しているコンテストはありません。</Typography>
+            )}
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAddContest}
+              sx={{ marginTop: 2 }}
+            >
+              コンテストを追加
+            </Button>
+          </Box>
+        );
+
       case 'works':
         return (
           <Grid container spacing={2}>
@@ -401,6 +462,9 @@ const MyPage = () => {
       </Button>
       <Button fullWidth onClick={fetchBookmarks}>
         しおりを見る
+      </Button>
+      <Button fullWidth onClick={fetchContests} variant="contained" color="primary">
+            コンテストを開催
       </Button>
     </Box>
   </Grid>

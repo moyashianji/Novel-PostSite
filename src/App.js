@@ -17,6 +17,10 @@ import WorksInSeries from './pages/WorksInSeries';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AnalytisPage from './pages/AnalytisPage';
+import ContestList from './pages/contests/ContestList';
+import ContestDetail from './pages/contests/ContestDetail';
+import ContestEntry from './pages/contests/ContestEntry';
+import ContestCreate from './pages/contests/ContestCreate';
 
 const theme = createTheme();
 
@@ -90,6 +94,10 @@ function App() {
             <Route path="/mypage/novel/:id/edit" element={<PostEditPage />} />
             <Route path="/series/:id/works" element={<WorksInSeries />} />  {/* ここにルートを追加 */}
             <Route path="/analytics/:id" element={<AnalytisPage />} />  {/* ここにルートを追加 */}
+            <Route path="/contests" element={<ContestList />} />
+        <Route path="/contests/:id" element={<ContestDetail />} />
+        <Route path="/contests/:id/enter" element={<ContestEntry />} />
+        <Route path="/contests/create" element={<ContestCreate />} />;
 
           </Routes>
         </Layout>
