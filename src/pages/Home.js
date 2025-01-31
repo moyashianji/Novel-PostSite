@@ -399,7 +399,8 @@ const Home = ({ auth }) => {
         開催中のコンテスト
       </Typography>
       <Grid container spacing={3}>
-        {contests.map((contest) => (
+        {contests.filter((contest) => contest.status === '募集中')
+        .map((contest) => (
           <Grid item xs={12} sm={6} md={4} key={contest._id}>
             <Card
               sx={{
@@ -460,7 +461,7 @@ const Home = ({ auth }) => {
                     color: 'gray',
                   }}
                 >
-                  {contest.description.slice(0, 20)}...
+                  {contest.shortDescription}
                 </Typography>
               </CardContent>
               <Box

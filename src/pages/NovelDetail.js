@@ -290,7 +290,10 @@ const NovelDetail = () => {
                 </Typography>
               )}
             </Box>
+
           </Box>
+          
+
           <Box sx={{ height: '16px' }} />
 
           {/* 自動スクロール機能 */}

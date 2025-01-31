@@ -29,8 +29,8 @@ const ContestList = () => {
             <Card>
               <CardContent>
                 <Typography variant="h5" gutterBottom>{contest.title}</Typography>
-                <Typography variant="body2" color="textSecondary">{contest.theme}</Typography>
-                <Typography variant="body2">開催期間: {new Date(contest.startDate).toLocaleDateString()} 〜 {new Date(contest.endDate).toLocaleDateString()}</Typography>
+                <Typography variant="body2" color="textSecondary">{contest.shortDescription}</Typography>
+                <Typography variant="body2">開催期間: {new Date(contest.applicationStartDate).toLocaleDateString()} 〜 {new Date(contest.applicationEndDate).toLocaleDateString()}</Typography>
                 <Box mt={1}>
                   <Chip label={contest.status} color="primary" />
                 </Box>

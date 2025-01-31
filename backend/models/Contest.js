@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 
 const judgeSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   position: { type: String},
   sns: { type: String },
 });
@@ -39,7 +39,7 @@ const contestSchema = new mongoose.Schema({
   allowSeries: { type: Boolean, default: false },
   minEntries: { type: Number, default: 0 },
   maxEntries: { type: Number, default: Infinity },
-  status: { type: String, default: 'draft', enum: ['draft', 'published', 'closed', 'review', 'results'] },
+  status: { type: String, required: true},
   creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   entries: [entrySchema],
 }, { timestamps: true });

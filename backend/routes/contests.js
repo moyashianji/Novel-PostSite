@@ -47,6 +47,7 @@ router.post('/create', authenticateToken, upload.fields([{ name: 'iconImage' }, 
       allowSeries,
       minEntries,
       maxEntries,
+      status,
     } = req.body;
 
     console.log("test")
@@ -58,7 +59,7 @@ router.post('/create', authenticateToken, upload.fields([{ name: 'iconImage' }, 
     let parsedJudges = [];
     if (judges) {
       parsedJudges = JSON.parse(judges).map(judge => ({
-        name: judge.name,
+        userId: judge.id,
         sns: judge.sns,
       }));
     }
@@ -91,7 +92,7 @@ router.post('/create', authenticateToken, upload.fields([{ name: 'iconImage' }, 
       minEntries: parseInt(minEntries, 10) || 0,
       maxEntries: parseInt(maxEntries, 10) || Infinity,
       creator: req.user._id, // 認証されたユーザーを主催者として設定
-      status: 'draft',
+      status: status,
 
     });
     console.log("testtt")
@@ -184,7 +185,10 @@ router.post('/:id/apply', authenticateToken, async (req, res) => {
     if (!contest) {
       return res.status(404).json({ message: 'コンテストが見つかりませんでした。' });
     }
-
+    // **ステータスが「募集中」以外なら応募不可**
+    if (contest.status !== '募集中') {
+      return res.status(400).json({ message: '現在、このコンテストには応募できません。' });
+    }
     // 作品を取得
     const post = await Post.findById(selectedPostId);
     if (!post) {
@@ -221,7 +225,18 @@ router.post('/:id/apply', authenticateToken, async (req, res) => {
 });
   router.get('/:id', async (req, res) => {
     try {
-      const contest = await Contest.findById(req.params.id).populate('entries.userId entries.postId judges');
+      const contest = await Contest.findById(req.params.id)
+      .populate({
+        path: 'judges.userId', // ✅ `userId` を `User` として `populate`
+        select: 'nickname icon ', // ✅ `nickname` と `icon` のみ取得
+      })
+      .populate({
+        path: 'entries.postId',
+        populate: {
+          path: 'author',
+          select: 'nickname icon', // 必要なフィールドのみ取得
+        },
+      });
       if (!contest) {
         return res.status(404).json({ message: 'コンテストが見つかりませんでした。' });
       }
