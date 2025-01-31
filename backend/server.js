@@ -35,6 +35,7 @@ const bookshelfRoutes = require('./routes/bookshelf');
 const tagRoutes = require('./routes/tags');
 const viewanalytics = require('./routes/analytics');
 const contestRoutes = require('./routes/contests');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 
 const app = express();
@@ -119,6 +120,7 @@ app.use('/api', bookshelfRoutes);
 app.use('/api', tagRoutes);
 app.use('/api', viewanalytics);
 app.use('/api/contests', contestRoutes);
+app.use('/api/upload', uploadRoutes); // アップロード API
 
 // エラーハンドリング
 app.use((err, req, res, next) => {

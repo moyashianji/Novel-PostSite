@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams ,useNavigate} from 'react-router-dom';
+import DOMPurify from 'dompurify';
+
 import {
   Box,
   Typography,
@@ -7,6 +9,8 @@ import {
   Grid,
   Card,
   CardContent,
+  CardMedia,
+  Chip,
   Modal,
   List,
   ListItem,
@@ -21,11 +25,14 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 
 const ContestDetail = () => {
   const { id } = useParams();
+  const [loading, setLoading] = useState(true);
+
   const [contest, setContest] = useState(null);
   const [works, setWorks] = useState([]);
   const [filteredWorks, setFilteredWorks] = useState([]);
@@ -33,29 +40,36 @@ const ContestDetail = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [selectedWorkForCancellation, setSelectedWorkForCancellation] = useState(null);
-  const API_URL = process.env.REACT_APP_API_URL;
+    const [judgeDetails, setJudgeDetails] = useState({}); // アカウント情報を保存
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchContest = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/contests/${id}`);
+        const response = await fetch(`/api/contests/${id}`);
         if (response.ok) {
           const data = await response.json();
           setContest(data);
+          fetchJudgesInfo(data.judges);
+          console.log(data.judges)
+
         } else {
           console.error('Failed to fetch contest details');
         }
       } catch (error) {
         console.error('Error fetching contest details:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchContest();
-  }, [id, API_URL]);
+  }, [id]);
 
   const fetchWorks = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/users/me/works`, {
+      const response = await fetch(`/api/users/me/works`, {
         credentials: 'include',
       });
       if (response.ok) {
@@ -98,7 +112,7 @@ const ContestDetail = () => {
 
   const handleSubmitEntry = async (workId) => {
     try {
-      const response = await fetch(`${API_URL}/api/contests/${id}/apply`, {
+      const response = await fetch(`/api/contests/${id}/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -108,7 +122,7 @@ const ContestDetail = () => {
       if (response.ok) {
         alert('応募が完了しました！');
         setModalOpen(false);
-        const contestResponse = await fetch(`${API_URL}/api/contests/${id}`);
+        const contestResponse = await fetch(`/api/contests/${id}`);
         if (contestResponse.ok) {
           const updatedContest = await contestResponse.json();
           setContest(updatedContest);
@@ -130,14 +144,14 @@ const ContestDetail = () => {
 
   const confirmCancelEntry = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/contests/${id}/entry/${selectedWorkForCancellation}`, {
+      const response = await fetch(`/api/contests/${id}/entry/${selectedWorkForCancellation}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
         alert('応募を取り消しました。');
-        const contestResponse = await fetch(`${API_URL}/api/contests/${id}`);
+        const contestResponse = await fetch(`/api/contests/${id}`);
         if (contestResponse.ok) {
           const updatedContest = await contestResponse.json();
           setContest(updatedContest);
@@ -153,46 +167,252 @@ const ContestDetail = () => {
       setConfirmationOpen(false);
     }
   };
+  const handleTagClick = (tag) => {
+    navigate(`/search?query=${encodeURIComponent(tag)}`);
+  };
+    // 「可」「不可」のチップを生成する関数
+    const renderStatusChip = (status) => (
+      <Chip
+        label={status ? '可' : '不可'}
+        color={status ? 'success' : 'error'}
+        sx={{ fontWeight: 'bold', marginLeft: 1 }}
+      />
+    );
 
-  if (!contest) return <Typography>Loading...</Typography>;
-
+    const fetchJudgesInfo = async (judgeIds) => {
+      if (!judgeIds || judgeIds.length === 0) return;
+    
+      const judgeData = {};
+      await Promise.all(
+        judgeIds.map(async (judgeId) => {
+          try {
+            const res = await fetch(`/api/users/${judgeId}`);
+            if (res.ok) {
+              const userData = await res.json();
+              judgeData[judgeId] = {
+                name: userData.nickname,
+                avatar: userData.icon,
+              };
+              console.log(userData.nickname)
+            }
+          } catch (error) {
+            console.error(`Error fetching judge info for ID ${judgeId}:`, error);
+          }
+        })
+      );
+    
+      setJudgeDetails(judgeData);
+    };
+  if (loading) return <CircularProgress sx={{ display: 'block', margin: '50px auto' }} />;
+  if (!contest) return <Typography>コンテストが見つかりませんでした。</Typography>;
+  const fixImagePaths = (html) => {
+    return html.replace(/<img src="\/uploads\/(.*?)"/g, `<img src="http://localhost:5000/uploads/$1"`);
+  };
   return (
-    <Box sx={{ padding: 4 }}>
-      {/* Header Section */}
+    <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: 4 }}>
+      {/* ヘッダー画像 */}
       {contest.headerImage && (
-        <Box sx={{ marginBottom: 4 }}>
+        <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: '8px', marginBottom: 4 }}>
           <img
-            src={`${API_URL}${contest.headerImage}`}
+            src={contest.headerImage}
             alt={contest.title}
-            style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '8px' }}
+            style={{ width: '100%', height: '300px', objectFit: 'cover' }}
           />
-        </Box>
+        </Paper>
       )}
-      <Typography variant="h4" gutterBottom>{contest.title}</Typography>
-      <Typography variant="body1" gutterBottom>{contest.description}</Typography>
 
-      {/* Apply Button */}
-      <Button variant="contained" color="primary" onClick={handleOpenModal}>
-        応募する
-      </Button>
+      {/* コンテスト概要 */}
+      <Paper elevation={3} sx={{ padding: 3, borderRadius: '8px', backgroundColor: '#fff' }}>
+        <Typography variant="h3" fontWeight="bold" gutterBottom>
+          {contest.title}
+        </Typography>
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          {contest.shortDescription}
+        </Typography>
+  {/* WYSIWYG のリッチテキストをそのまま表示 */}
+  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(fixImagePaths(contest.description)) }} />
+  </Paper>
 
-      {/* Entries Section */}
-      <Typography variant="h6" sx={{ marginTop: 4 }}>応募作品一覧</Typography>
-      <Grid container spacing={3} sx={{ marginTop: 2 }}>
-        {contest.entries.map(entry => (
-          <Grid item xs={12} sm={6} key={entry._id}>
-            <Card>
-              <CardContent>
-                <Typography>{entry.postId.title}</Typography>
-                <Typography variant="caption">応募者: {entry.userId.nickname}</Typography>
-                <Typography variant="caption" display="block">
-                  応募日: {new Date(entry.submissionDate).toLocaleDateString()}
-                </Typography>
-              </CardContent>
-            </Card>
+      {/* 応募ボタン */}
+      <Box textAlign="center" mt={4}>
+        <Button variant="contained" color="primary" size="large" onClick={handleOpenModal}>
+          応募する
+        </Button>
+      </Box>
+
+          {/* 応募条件 */}
+          <Box mt={4}>
+        <Typography variant="h5" gutterBottom>
+          応募条件
+        </Typography>
+        <Paper elevation={3} sx={{ padding: 3, borderRadius: '8px', backgroundColor: '#fff' }}>
+          <List>
+            <ListItem>
+            <ListItemText primary="応募可能な作品のステータス" />
+         
+                </ListItem>
+            <ListItem>
+            <Chip
+                label={contest.allowFinishedWorks ? '完結済作品のみ応募可能' : '未完結作品も応募可能'}
+                color={contest.allowFinishedWorks ? 'success' : 'warning'}
+                sx={{ fontWeight: 'bold', marginLeft: 1 }}
+              /> 
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemText primary="コンテスト開催前に投稿された作品の応募"/>
+              
+            </ListItem>
+            <ListItem>
+            {renderStatusChip(contest.allowPreStartDate)}
+
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemText primary="R18作品"/>
+            </ListItem>
+            <ListItem>
+            {renderStatusChip(contest.allowR18)}
+
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemText primary="シリーズ作品の応募について"/>
+            </ListItem>
+            <ListItem>
+            {renderStatusChip(contest.allowSeries)}
+
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemText primary="ジャンル制限" />
+            </ListItem>
+            <ListItem>
+              <Box>
+                {contest.restrictGenres && contest.genres.length > 0 ? (
+                  contest.genres.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      sx={{ marginRight: 0.5, marginBottom: 0.5 }}
+                      onClick={() => handleTagClick(tag)}
+                    />
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">なし</Typography>
+                )}
+              </Box>
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemText primary="AI使用制限" />
+            </ListItem>
+            <ListItem>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {contest.restrictAI && contest.aiTags.length > 0 ? (
+                  contest.aiTags.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      sx={{ marginRight: 0.5, marginBottom: 0.5 }}
+                      onClick={() => handleTagClick(tag)}
+                    />
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">なし</Typography>
+                )}
+              </Box>
+            </ListItem>
+            <Divider />
+            <ListItem>
+  <ListItemText primary="文字数制限（最低～最大）" />
+</ListItem>
+<ListItem>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+    <Typography variant="h6" fontWeight="bold" color="primary">
+      {contest.minWordCount}
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      ～
+    </Typography>
+    <Typography variant="h6" fontWeight="bold" color="primary">
+      {contest.maxWordCount > 0 ? contest.maxWordCount : '制限なし'}
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      文字
+    </Typography>
+  </Box>
+</ListItem>
+<Divider />
+            <ListItem>
+  <ListItemText primary="コンテストの実施に必要な最低応募総数" />
+</ListItem>
+<ListItem>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+    <Typography variant="h6" fontWeight="bold" color="primary">
+      {contest.minEntries > 0 ? contest.minEntries : '制限なし'}
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      作品
+    </Typography>
+  </Box>
+</ListItem>
+          </List>
+        </Paper>
+      </Box>
+
+      {/* 日程情報 */}
+      <Box mt={4}>
+        <Typography variant="h5" gutterBottom>
+          日程情報
+        </Typography>
+        <Paper elevation={3} sx={{ padding: 3, borderRadius: '8px', backgroundColor: '#fff' }}>
+          <List>
+            <ListItem>
+              <ListItemText primary="応募期間" secondary={`${new Date(contest.applicationStartDate).toLocaleDateString()} - ${new Date(contest.applicationEndDate).toLocaleDateString()}`} />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemText primary="審査期間" secondary={`${new Date(contest.reviewStartDate).toLocaleDateString()} - ${new Date(contest.reviewEndDate).toLocaleDateString()}`} />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemText primary="結果発表日" secondary={new Date(contest.resultAnnouncementDate).toLocaleDateString()} />
+            </ListItem>
+          </List>
+        </Paper>
+      </Box>
+      {/* 審査員情報 */}
+      {contest.enableJudges && contest.judges.length > 0 && (
+        <Box mt={4}>
+          <Typography variant="h5" gutterBottom>
+            審査員
+          </Typography>
+          <Grid container spacing={2}>
+            {contest.judges.map((judgeId, index) => {
+              const judgeInfo = judgeDetails[judgeId];
+
+              return (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Card elevation={3} sx={{ borderRadius: '8px' }}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                      <Avatar
+                        src={judgeInfo?.avatar}
+                        alt={judgeInfo?.name}
+                        sx={{ width: 80, height: 80, marginBottom: 2, margin: '0 auto' }}
+                      />
+                      <Typography variant="h6" fontWeight="bold">
+                        {judgeInfo?.name || '不明なユーザー'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
-        ))}
-      </Grid>
+        </Box>
+      
+      )}
 
       {/* Apply Modal */}
       <Modal open={modalOpen} onClose={handleCloseModal}>

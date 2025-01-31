@@ -21,6 +21,8 @@ services:
     volumes:
       - ./backend:/usr/src/app  # ホスト側とコンテナ側のコードを同期
       - /usr/src/app/node_modules  # node_modulesをホストと分離
+      - ./uploads:/app/uploads
+
     environment:
       - MONGO_URI=mongodb://mongo:27017/novel-site  # ホストのMongoDBに接続
       - REDIS_URL=redis://redis:6379  # ここに追加（Redisへの接続設定）

@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
 import PostCard from '../components/PostCard';
 import PVRanking from '../components/PVRanking.js';  // 正しいパスでインポート
-import { Box, Typography, Grid, Pagination, Button, TextField, IconButton, Paper } from '@mui/material';
+import { Box, Typography, Grid, Card,Pagination, Button, TextField, IconButton, Paper, CardContent, CardMedia } from '@mui/material';
 import PopularTags from '../components/PopularTags'; // 人気タグのコンポーネントをインポート
 import { Delete as DeleteIcon } from '@mui/icons-material'; // 削除アイコンをインポート
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const Home = ({ auth }) => {
   const [posts, setPosts] = useState([]);
@@ -16,10 +17,14 @@ const Home = ({ auth }) => {
   const [isPending, startTransition] = useTransition();  // useTransitionを使用
   const [text, setText] = useState({});  // 各タグ入力用の一時的な状態
   const [announcements, setAnnouncements] = useState([]); // 運営からのお知らせ
+  const [contests, setContests] = useState([]); // 開催中のコンテスト
+  const navigate = useNavigate();
+
   const ADMIN_USER_ID = '66c360d0dd9964e79ab728b6';
 
   const API_URL = process.env.REACT_APP_API_URL;
   const MAX_ANNOUNCEMENTS_DISPLAY = 5; // 表示する最大数
+  const MAX_CONTESTS_DISPLAY = 10; // 表示する最大数
 
   useEffect(() => {
     const fetchPosts = async (page = 1) => {
@@ -61,9 +66,22 @@ const Home = ({ auth }) => {
       }
     };
 
-
+    const fetchContests = async () => {
+      try {
+        const response = await fetch('/api/contests');
+        if (response.ok) {
+          const data = await response.json();
+          setContests(data);
+        } else {
+          console.error('Failed to fetch contests');
+        }
+      } catch (error) {
+        console.error('Error fetching contests:', error);
+      }
+    };
     fetchPosts(currentPage);
     fetchAnnouncements();
+    fetchContests();
 
   }, [auth, currentPage, ADMIN_USER_ID]);
 
@@ -371,6 +389,110 @@ const Home = ({ auth }) => {
     </Grid>
   )), [tagContainers, handleDeleteTagContainer, handleTagSubmit, handleTagPageChange, text, auth]);
 
+  const handleViewContest = (id) => {
+    navigate(`/contests/${id}`);
+  };
+
+  const renderedContests = useMemo(() => (
+    <Box sx={{ padding: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        開催中のコンテスト
+      </Typography>
+      <Grid container spacing={3}>
+        {contests.map((contest) => (
+          <Grid item xs={12} sm={6} md={4} key={contest._id}>
+            <Card
+              sx={{
+                position: 'relative',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <CardMedia
+                component="img"
+                height="180"
+                image={`${API_URL}${contest.headerImage}`}
+                alt={contest.title}
+                sx={{
+                  filter: 'brightness(0.8)', // 画像を暗くしてテキストを見やすく
+                  cursor: 'pointer', // マウスカーソルをポインタに変更
+                }}
+                onClick={() => handleViewContest(contest._id)} // 画像クリックで遷移
+              />
+              <CardContent
+                sx={{
+                  padding: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                }}
+              >
+                {/* タイトル */}
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 'bold',
+                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+                    wordBreak: 'break-word', // タイトルが長い場合は折り返し表示
+                  }}
+                >
+                  {contest.title}
+                </Typography>
+                {/* 応募期間 */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 'bold',
+                    color: 'gray',
+                  }}
+                >
+                  応募期間: {new Date(contest.applicationStartDate).toLocaleDateString()} 〜{' '}
+                  {new Date(contest.applicationEndDate).toLocaleDateString()}
+                </Typography>
+                {/* 説明文 */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    color: 'gray',
+                  }}
+                >
+                  {contest.description.slice(0, 20)}...
+                </Typography>
+              </CardContent>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  padding: 2,
+                  background: 'linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent)',
+                  color: 'white',
+                }}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                onClick={() => handleViewContest(contest._id)}
+                sx={{
+                  borderRadius: 0,
+                }}
+              >
+                詳細を見る
+              </Button>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  ), [contests]);
+  
+
   return (
     <Grid container spacing={1} sx={{ maxWidth: '1400px', margin: '0 auto', paddingTop: 4 }}>
 
@@ -381,6 +503,8 @@ const Home = ({ auth }) => {
       </Grid>
 
       <Grid item xs={12} md={7} sx={{ paddingLeft: 2, paddingRight: 2 }}>
+      {renderedContests} {/* 開催中のコンテスト一覧 */}
+
         <Typography variant="h4" gutterBottom>
           新着作品
         </Typography>

@@ -21,44 +21,78 @@ const storage = multer.diskStorage({
   });
   const upload = multer({ storage });
 
-router.post('/create', authenticateToken, upload.single('headerImage'), async (req, res) => {
+router.post('/create', authenticateToken, upload.fields([{ name: 'iconImage' }, { name: 'headerImage' }]), async (req, res) => {
   try {
     const {
       title,
-      theme,
+      shortDescription,
       description,
-      startDate,
-      endDate,
       applicationStartDate,
       applicationEndDate,
       reviewStartDate,
       reviewEndDate,
-      rules,
-      prizes,
+      resultAnnouncementDate,
+      enableJudges,
       judges,
+      allowFinishedWorks,
+      allowPreStartDate,
+      restrictAI,
+      aiTags,
+      allowR18,
+      restrictGenres,
+      genres,
+      restrictWordCount,
+      minWordCount,
+      maxWordCount,
+      allowSeries,
+      minEntries,
       maxEntries,
     } = req.body;
-    console.log("test")
-    const headerImage = req.file ? `/uploads/contests/${req.file.filename}` : ''; // ヘッダー画像パス
 
+    console.log("test")
+
+        // 画像のパスを設定
+        const iconImage = req.files['iconImage'] ? `/uploads/contests/${req.files['iconImage'][0].filename}` : '';
+        const headerImage = req.files['headerImage'] ? `/uploads/contests/${req.files['headerImage'][0].filename}` : '';
+    // judges をパースして `position` が必須フィールドになっていることを確認
+    let parsedJudges = [];
+    if (judges) {
+      parsedJudges = JSON.parse(judges).map(judge => ({
+        name: judge.name,
+        sns: judge.sns,
+      }));
+    }
+        
     // 新しいコンテストを作成
     const newContest = new Contest({
       title: title,
-      theme: theme,
+      shortDescription: shortDescription,
       description: description,
+      iconImage: iconImage,
       headerImage: headerImage,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
       applicationStartDate: new Date(applicationStartDate),
       applicationEndDate: new Date(applicationEndDate),
       reviewStartDate: new Date(reviewStartDate),
       reviewEndDate: new Date(reviewEndDate),
-      rules: rules,
-      prizes: prizes ? JSON.parse(prizes) : [],
-      judges: judges ? JSON.parse(judges) : [],
-      maxEntries: maxEntries ? parseInt(maxEntries, 10) : 100,
+      resultAnnouncementDate: new Date(resultAnnouncementDate),
+      enableJudges: enableJudges === 'true', // Boolean に変換
+      judges: judges ? parsedJudges : [],
+      allowFinishedWorks: allowFinishedWorks === 'true',
+      allowPreStartDate: allowPreStartDate === 'true',
+      restrictAI: restrictAI === 'true',
+      aiTags: aiTags ? JSON.parse(aiTags) : [],
+      allowR18: allowR18 === 'true',
+      restrictGenres: restrictGenres === 'true',
+      genres: genres ? JSON.parse(genres) : [],
+      restrictWordCount: restrictWordCount === 'true',
+      minWordCount: parseInt(minWordCount, 10) || 0,
+      maxWordCount: parseInt(maxWordCount, 10) || 0,
+      allowSeries: allowSeries === 'true',
+      minEntries: parseInt(minEntries, 10) || 0,
+      maxEntries: parseInt(maxEntries, 10) || Infinity,
       creator: req.user._id, // 認証されたユーザーを主催者として設定
       status: 'draft',
+
     });
     console.log("testtt")
 
@@ -200,8 +234,12 @@ router.post('/:id/apply', authenticateToken, async (req, res) => {
 
   router.get('/', async (req, res) => {
     try {
-      const contests = await Contest.find().sort({ createdAt: -1 });
-      res.status(200).json(contests);
+        const now = new Date();
+        const contests = await Contest.find({ 
+          applicationStartDate: { $lte: now }, 
+          applicationEndDate: { $gte: now } 
+        }).sort({ applicationStartDate: -1 });  
+        res.status(200).json(contests);
     } catch (error) {
       console.error('Error fetching contests:', error);
       res.status(500).json({ message: 'コンテスト一覧の取得に失敗しました。', error });

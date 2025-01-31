@@ -219,7 +219,7 @@ const MyPage = () => {
                   <CardContent>
                     <Typography variant="h6">{contest.title}</Typography>
                     <Typography variant="body2" color="textSecondary">
-                      {contest.description}
+                      {contest.shortDescription}
                     </Typography>
                     <Typography variant="body2" color="textSecondary">
                       状態: {contest.status}
