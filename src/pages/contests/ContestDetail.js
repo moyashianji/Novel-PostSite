@@ -262,7 +262,23 @@ const ContestDetail = () => {
     return html.replace(/<img src="\/uploads\/(.*?)"/g, `<img src="http://localhost:5000/uploads/$1"`);
   };
 
+  const formatDate = (date) => {
+    if (!date) return '未設定'; // ✅ `null` や `undefined` の場合「未設定」を表示
 
+    const parsedDate = new Date(date);
+
+    if (isNaN(parsedDate)) {
+      return date; // ✅ `String` の場合、そのまま表示（例: 「1月中旬」など）
+    }
+
+    const year = parsedDate.getFullYear();
+    const month = String(parsedDate.getMonth() + 1).padStart(2, '0'); // ✅ `0埋め` で2桁
+    const day = String(parsedDate.getDate()).padStart(2, '0');
+    const hours = String(parsedDate.getHours()).padStart(2, '0');
+    const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+
+    return `${year}/${month}/${day} ${hours}:${minutes}`; // ✅ `YYYY/MM/DD HH:MM` の形式に変換
+  };
   return (
     <Grid container spacing={2} sx={{ maxWidth: '1400px', margin: '0 auto', paddingTop: 4 }}>
       {/* 左サイドバー（主催者情報） */}
@@ -346,13 +362,13 @@ const ContestDetail = () => {
           {/* 画像サイズを調整するための CSS */}
           <style>
             {`
-    .contest-description img {
-      max-width: 100% !important; /* ✅ Paper の幅を超えない */
-      height: auto !important; /* ✅ アスペクト比を維持して自動縮小 */
-      display: block !important; /* ✅ インライン要素の余白を削除 */
-      margin: 10px auto !important; /* ✅ 画像を中央揃え */
-    }
-  `}
+              .contest-description img {
+                max-width: 100% !important; /* ✅ Paper の幅を超えない */
+                height: auto !important; /* ✅ アスペクト比を維持して自動縮小 */
+                display: block !important; /* ✅ インライン要素の余白を削除 */
+                margin: 10px auto !important; /* ✅ 画像を中央揃え */
+              }
+            `}
           </style>
 
           {/* 応募ボタン */}
@@ -491,15 +507,15 @@ const ContestDetail = () => {
             <Paper elevation={3} sx={{ padding: 3, borderRadius: '8px', backgroundColor: '#fff' }}>
               <List>
                 <ListItem>
-                  <ListItemText primary="応募期間" secondary={`${new Date(contest.applicationStartDate).toLocaleDateString()} - ${new Date(contest.applicationEndDate).toLocaleDateString()}`} />
+                  <ListItemText primary="応募期間" secondary={`${formatDate(contest.applicationStartDate)} - ${formatDate(contest.applicationEndDate)}`} />
                 </ListItem>
                 <Divider />
                 <ListItem>
-                  <ListItemText primary="審査期間" secondary={`${new Date(contest.reviewStartDate).toLocaleDateString()} - ${new Date(contest.reviewEndDate).toLocaleDateString()}`} />
+                  <ListItemText primary="審査期間" secondary={`${formatDate(contest.reviewStartDate)} - ${formatDate(contest.reviewEndDate)}`} />
                 </ListItem>
                 <Divider />
                 <ListItem>
-                  <ListItemText primary="結果発表日" secondary={new Date(contest.resultAnnouncementDate).toLocaleDateString()} />
+                  <ListItemText primary="結果発表日" secondary={formatDate(contest.resultAnnouncementDate)} />
                 </ListItem>
               </List>
             </Paper>
@@ -511,24 +527,24 @@ const ContestDetail = () => {
                 審査員
               </Typography>
               <Grid container spacing={2}>
-      {contest.judges.map((judge, index) => (
-        <Grid item xs={12} sm={6} md={4} key={judge.userId._id}> {/* ✅ `judge._id` を `key` に使用 */}
-          <Card elevation={3} sx={{ borderRadius: '8px' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <RouterLink to={`/user/${judge.userId._id}`}>
-                <Avatar
-                  src={judge.userId.icon} // ✅ `judge.userId.icon` を直接使用
-                  alt={judge.userId.nickname} // ✅ `judge.userId.nickname` を直接使用
-                     sx={{ width: 80, height: 80, marginBottom: 2, margin: '0 auto' }}
-                />
-              </RouterLink>
-              <Typography variant="h6" fontWeight="bold">
-                {judge.userId.nickname || '不明なユーザー'}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      ))}
+                {contest.judges.map((judge, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={judge.userId._id}> {/* ✅ `judge._id` を `key` に使用 */}
+                    <Card elevation={3} sx={{ borderRadius: '8px' }}>
+                      <CardContent sx={{ textAlign: 'center' }}>
+                        <RouterLink to={`/user/${judge.userId._id}`}>
+                          <Avatar
+                            src={judge.userId.icon} // ✅ `judge.userId.icon` を直接使用
+                            alt={judge.userId.nickname} // ✅ `judge.userId.nickname` を直接使用
+                            sx={{ width: 80, height: 80, marginBottom: 2, margin: '0 auto' }}
+                          />
+                        </RouterLink>
+                        <Typography variant="h6" fontWeight="bold">
+                          {judge.userId.nickname || '不明なユーザー'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
               </Grid>
             </Box>
 

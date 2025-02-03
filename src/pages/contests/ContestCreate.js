@@ -13,6 +13,10 @@ import {
     IconButton,
     Paper,
     Avatar,
+    MenuItem,
+    Select,
+    FormControl,
+    InputLabel,
 } from '@mui/material';
 import 'react-quill/dist/quill.snow.css';
 import AddIcon from '@mui/icons-material/Add';
@@ -44,6 +48,11 @@ const ContestCreate = () => {
     const [reviewStartDate, setReviewStartDate] = useState(getLocalStorageData('reviewStartDate', ''));
     const [reviewEndDate, setReviewEndDate] = useState(getLocalStorageData('reviewEndDate', ''));
     const [resultAnnouncementDate, setResultAnnouncementDate] = useState(getLocalStorageData('resultAnnouncementDate', ''));
+    const [applicationStartDateType, setApplicationStartDateType] = useState('calendar');
+    const [applicationEndDateType, setApplicationEndDateType] = useState('calendar');
+    const [reviewStartDateType, setReviewStartDateType] = useState('calendar');
+    const [reviewEndDateType, setReviewEndDateType] = useState('calendar');
+    const [resultAnnouncementDateType, setResultAnnouncementDateType] = useState('calendar');
 
     const [enableJudges, setEnableJudges] = useState(getLocalStorageData('enableJudges', false));
     const [judges, setJudges] = useState(getLocalStorageData('judges', []));
@@ -71,9 +80,33 @@ const ContestCreate = () => {
     const [minEntries, setMinEntries] = useState(getLocalStorageData('minEntries', ''));
     const [maxEntries, setMaxEntries] = useState(getLocalStorageData('maxEntries', ''));
     const [status, setStatus] = useState(getLocalStorageData('status', '開催予定'));
+    const [applicationStartDateError, setApplicationStartDateError] = useState(false);
+    const [applicationEndDateError, setApplicationEndDateError] = useState(false);
 
     const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState(null); // ✅ ログインユーザー情報を保存
+
     const isValidObjectId = (id) => /^[a-fA-F0-9]{24}$/.test(id);
+
+
+    // ✅ ユーザー情報を取得
+    useEffect(() => {
+        const fetchUserInfo = async () => {
+            try {
+                const response = await fetch('/api/user/me', { credentials: 'include' });
+                if (response.ok) {
+                    const data = await response.json();
+                    setUser(data); // ✅ ユーザー情報を保存
+                } else {
+                    console.error('Failed to fetch user info');
+                }
+            } catch (error) {
+                console.error('Error fetching user info:', error);
+            }
+        };
+
+        fetchUserInfo();
+    }, []);
 
     const base64ToFile = (base64, filename) => {
         const arr = base64.split(',');
@@ -304,6 +337,10 @@ const ContestCreate = () => {
             alert('必須項目をすべて入力してください。');
             return;
         }
+        if (!validateForm()) {
+            alert('必須項目をすべて入力してください');
+            return;
+        }
         // **HTML 内の Base64 画像を抽出**
         const base64Images = extractBase64Images(description);
 
@@ -371,6 +408,105 @@ const ContestCreate = () => {
     const characterCountDisplay = (current, max) => (
         <Typography variant="caption" sx={{ color: '#555' }}>{`${current} / ${max}`}</Typography>
     );
+    const renderDateInput = (label, value, setValue, type, setType, isRequired) => (
+        <Grid item xs={12} md={6}>
+            <FormControl fullWidth>
+                <InputLabel>{label}</InputLabel>
+                <Select value={type} onChange={(e) => setType(e.target.value)}>
+                    <MenuItem value="calendar">カレンダーから選択</MenuItem>
+                    <MenuItem value="text">自由入力</MenuItem>
+                </Select>
+            </FormControl>
+            {type === 'calendar' ? (
+                <TextField
+                    type="datetime-local"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    error={isRequired && !value} // ✅ 必須項目が未入力の場合、エラー表示
+                    helperText={isRequired && !value ? `${label}は必須です` : ''}
+
+                />
+            ) : (
+                <TextField
+                    fullWidth
+                    placeholder="例: 1月中旬 / 春頃 / 2025年3月予定"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    error={isRequired && !value}
+                    helperText={isRequired && !value ? `${label}は必須です` : ''}
+
+                />
+            )}
+        </Grid>
+    );
+
+    const validateForm = () => {
+        let isValid = true;
+
+        if (!applicationStartDate) {
+            setApplicationStartDateError(true);
+            isValid = false;
+        } else {
+            setApplicationStartDateError(false);
+        }
+
+        if (!applicationEndDate) {
+            setApplicationEndDateError(true);
+            isValid = false;
+        } else {
+            setApplicationEndDateError(false);
+        }
+
+        return isValid;
+    };
+    const handlePreview = () => {
+        if (!user) {
+            alert('ユーザー情報が取得できませんでした。ログインしていますか？');
+            return;
+        }
+        const previewData = {
+            title,
+            shortDescription,
+            description,
+            applicationStartDate,
+            applicationEndDate,
+            reviewStartDate,
+            reviewEndDate,
+            resultAnnouncementDate,
+            enableJudges,
+            judges: judges.map(judge => ({
+                userId: { _id: judge.id, nickname: judge.name, icon: judge.avatar }
+            })),
+            creator: {
+                _id: user._id, // ✅ 自分のユーザーID
+                nickname: user.nickname, // ✅ 自分の名前
+                icon: user.icon // ✅ 自分のアイコン
+            },
+            entries: [], // 応募作品は空
+            status: status,
+            headerImage: headerPreview,
+            allowFinishedWorks: allowFinishedWorks,
+            allowPreStartDate: allowPreStartDate,
+            allowR18: allowR18,
+            allowSeries: allowSeries,
+            restrictGenres: restrictGenres,
+            genres: restrictGenres ? genres : [], // ✅ `restrictGenres` が `true` の場合のみジャンルを保存
+            restrictAI: restrictAI,
+            aiTags: restrictAI ? aiTags : [],
+            minWordCount: minWordCount,
+            maxWordCount: maxWordCount,
+            minEntries: minEntries,
+        };
+
+        // ✅ `sessionStorage` にデータを保存
+        sessionStorage.setItem('contestPreviewData', JSON.stringify(previewData));
+
+        // ✅ 新しいタブでプレビューを開く
+        window.open('/contest-preview', '_blank');
+    };
+
 
     return (
         <Box
@@ -390,7 +526,7 @@ const ContestCreate = () => {
                 {/* コンテスト情報 */}
                 <Grid item xs={12}>
                     <Typography variant="h6" sx={{ mb: 1, color: '#555' }}>
-                        コンテスト基本情報
+                        コンテスト基本情報<Typography component="span" color="error"> ※</Typography>
                     </Typography>
                     <Box sx={{ backgroundColor: '#fff', padding: 3, borderRadius: 2 }}>
 
@@ -499,62 +635,15 @@ const ContestCreate = () => {
                 {/* 日程設定 */}
                 <Grid item xs={12}>
                     <Typography variant="h6" sx={{ mb: 1, color: '#555' }}>
-                        日程設定
+                        日程設定<Typography component="span" color="error"> ※応募開始、終了日必須</Typography>
                     </Typography>
                     <Box sx={{ backgroundColor: '#fff', padding: 3, borderRadius: 2 }}>
                         <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                                <TextField
-                                    label="応募開始日"
-                                    type="date"
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    value={applicationStartDate}
-                                    onChange={(e) => setApplicationStartDate(e.target.value)}
-                                    required
-                                />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                                <TextField
-                                    label="応募終了日"
-                                    type="date"
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    value={applicationEndDate}
-                                    onChange={(e) => setApplicationEndDate(e.target.value)}
-                                    required
-                                />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                                <TextField
-                                    label="審査開始日"
-                                    type="date"
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    value={reviewStartDate}
-                                    onChange={(e) => setReviewStartDate(e.target.value)}
-                                />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                                <TextField
-                                    label="審査終了日"
-                                    type="date"
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    value={reviewEndDate}
-                                    onChange={(e) => setReviewEndDate(e.target.value)}
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <TextField
-                                    label="結果発表日"
-                                    type="date"
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    value={resultAnnouncementDate}
-                                    onChange={(e) => setResultAnnouncementDate(e.target.value)}
-                                />
-                            </Grid>
+                            {renderDateInput('応募開始日', applicationStartDate, setApplicationStartDate, applicationStartDateType, setApplicationStartDateType, true)}
+                            {renderDateInput('応募終了日', applicationEndDate, setApplicationEndDate, applicationEndDateType, setApplicationEndDateType, true)}
+                            {renderDateInput('審査開始日', reviewStartDate, setReviewStartDate, reviewStartDateType, setReviewStartDateType, false)}
+                            {renderDateInput('審査終了日', reviewEndDate, setReviewEndDate, reviewEndDateType, setReviewEndDateType, false)}
+                            {renderDateInput('結果発表日', resultAnnouncementDate, setResultAnnouncementDate, resultAnnouncementDateType, setResultAnnouncementDateType, false)}
                         </Grid>
                     </Box>
                 </Grid>
@@ -837,7 +926,7 @@ const ContestCreate = () => {
                 </Grid>
                 <Grid item xs={12}>
                     <Typography variant="h6" sx={{ mb: 1, color: '#555' }}>
-                        コンテストステータス
+                        コンテストステータス<Typography component="span" color="error"> ※</Typography>
                     </Typography>
                     <Box sx={{ backgroundColor: '#fff', padding: 3, borderRadius: 2 }}>
                         <TextField
@@ -854,6 +943,21 @@ const ContestCreate = () => {
                             <option value="募集終了">募集終了</option>
                             <option value="募集一時停止中">募集一時停止中</option>
                         </TextField>
+                    </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                    <Box sx={{ backgroundColor: '#fff', padding: 3, borderRadius: 2 }}>
+
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            fullWidth
+                            onClick={handlePreview}
+                            sx={{ mt: 2 }}
+                        >
+                            プレビュー
+                        </Button>
                     </Box>
                 </Grid>
                 <Grid item xs={12}>

@@ -21,6 +21,7 @@ import ContestList from './pages/contests/ContestList';
 import ContestDetail from './pages/contests/ContestDetail';
 import ContestEntry from './pages/contests/ContestEntry';
 import ContestCreate from './pages/contests/ContestCreate';
+import ContestPreview  from './pages/contests/ContestPreview';
 
 const theme = createTheme();
 
@@ -98,7 +99,7 @@ function App() {
         <Route path="/contests/:id" element={<ContestDetail />} />
         <Route path="/contests/:id/enter" element={<ContestEntry />} />
         <Route path="/contests/create" element={<ContestCreate />} />;
-
+        <Route path="/contest-preview" element={<ContestPreview />} />
           </Routes>
         </Layout>
       </Router>

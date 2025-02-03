@@ -49,7 +49,10 @@ router.post('/create', authenticateToken, upload.fields([{ name: 'iconImage' }, 
       maxEntries,
       status,
     } = req.body;
-
+    // ✅ `Date` に変換できる場合は `Date` として保存、それ以外は `String`
+    const parseDateOrString = (value) => {
+      return !isNaN(Date.parse(value)) ? new Date(value) : value;
+    };
     console.log("test")
 
         // 画像のパスを設定
@@ -71,11 +74,11 @@ router.post('/create', authenticateToken, upload.fields([{ name: 'iconImage' }, 
       description: description,
       iconImage: iconImage,
       headerImage: headerImage,
-      applicationStartDate: new Date(applicationStartDate),
-      applicationEndDate: new Date(applicationEndDate),
-      reviewStartDate: new Date(reviewStartDate),
-      reviewEndDate: new Date(reviewEndDate),
-      resultAnnouncementDate: new Date(resultAnnouncementDate),
+      applicationStartDate: parseDateOrString(applicationStartDate),
+      applicationEndDate: parseDateOrString(applicationEndDate),
+      reviewStartDate: reviewStartDate ? parseDateOrString(reviewStartDate) : null,
+      reviewEndDate: reviewEndDate ? parseDateOrString(reviewEndDate) : null,
+      resultAnnouncementDate: resultAnnouncementDate ? parseDateOrString(resultAnnouncementDate) : null,
       enableJudges: enableJudges === 'true', // Boolean に変換
       judges: judges ? parsedJudges : [],
       allowFinishedWorks: allowFinishedWorks === 'true',

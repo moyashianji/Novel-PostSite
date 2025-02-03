@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Grid, Typography, Card,Chip, CardContent, Avatar } from '@mui/material';
+import { Box, Button, Grid,Divider, Typography,CardMedia, Card,Chip, CardContent, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ProfileInfo from '../components/ProfileInfo';
 
@@ -205,47 +205,141 @@ const MyPage = () => {
   const truncateText = (text, maxLength) => {
     return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
   };
+  const handleViewContest = (id) => {
+    navigate(`/contests/${id}`);
+  };
+
   const renderContent = () => {
     switch (displayedContent) {
       case 'contests':
         return (
           <Box>
+                        <Box textAlign="center">
+
+<Button
+  variant="contained"
+  color="primary"
+  onClick={handleAddContest}
+  sx={{ marginTop: 2 ,marginBottom: 5}}
+>
+  コンテストを追加
+</Button>
+            <Divider sx={{ my: 2 }} />
+
+            </Box>
             <Typography variant="h5" gutterBottom>
               自分が主催するコンテスト一覧
             </Typography>
+                  <Grid container spacing={3}>
+            
             {contests.length > 0 ? (
               contests.map((contest) => (
-                <Card key={contest._id} sx={{ marginBottom: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6">{contest.title}</Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {contest.shortDescription}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      状態: {contest.status}
-                    </Typography>
-                    <Box sx={{ marginTop: 2 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => navigate(`/contests/${contest._id}`)}
+                <Grid item xs={12} sm={6} md={4} key={contest._id}>
+                  <Card
+                    sx={{
+                      position: 'relative',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    }}
+                  >
+                    <CardMedia
+                      component="img"
+                      height="180"
+                      image={`${API_URL}${contest.headerImage}`}
+                      alt={contest.title}
+                      sx={{
+                        filter: 'brightness(0.8)', // 画像を暗くしてテキストを見やすく
+                        cursor: 'pointer', // マウスカーソルをポインタに変更
+                      }}
+                      onClick={() => handleViewContest(contest._id)} // 画像クリックで遷移
+                    />
+                    <CardContent
+                      sx={{
+                        padding: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                      }}
+                    >
+                      {/* タイトル */}
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 'bold',
+                          textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+                          wordBreak: 'break-word', // タイトルが長い場合は折り返し表示
+                        }}
                       >
-                        詳細を見る
-                      </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
+                        {contest.title}
+                      </Typography>
+                      {/* 応募期間 */}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 'bold',
+                          color: 'gray',
+                        }}
+                      >
+                        応募期間: {new Date(contest.applicationStartDate).toLocaleDateString()} 〜{' '}
+                        {new Date(contest.applicationEndDate).toLocaleDateString()}
+                      </Typography>
+                      {/* 説明文 */}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          color: 'gray',
+                        }}
+                      >
+                        {contest.shortDescription}
+                      </Typography>
+                    </CardContent>
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: 2,
+                        background: 'linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent)',
+                        color: 'white',
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      fullWidth
+                      onClick={() => handleViewContest(contest._id)}
+                      sx={{
+                        borderRadius: 0,
+                      }}
+                    >
+                      詳細を見る
+                    </Button>
+                  </Card>
+                </Grid>
               ))
             ) : (
               <Typography variant="body1">主催しているコンテストはありません。</Typography>
             )}
+                  </Grid>
+c            <Divider sx={{ my: 2 }} />
+
+            <Box textAlign="center">
+
             <Button
               variant="contained"
               color="primary"
               onClick={handleAddContest}
-              sx={{ marginTop: 2 }}
+              sx={{ marginTop: 2 ,marginBottom: 5}}
             >
               コンテストを追加
             </Button>
+                        </Box>
+            
           </Box>
         );
 
