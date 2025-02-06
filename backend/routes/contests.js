@@ -252,12 +252,10 @@ router.post('/:id/apply', authenticateToken, async (req, res) => {
 
   router.get('/', async (req, res) => {
     try {
-        const now = new Date();
-        const contests = await Contest.find({ 
-          applicationStartDate: { $lte: now }, 
-          applicationEndDate: { $gte: now } 
-        }).sort({ applicationStartDate: -1 });  
-        res.status(200).json(contests);
+      // ✅ 「募集中」のコンテストのみ取得
+      const contests = await Contest.find({ status: '募集中' });
+  
+      res.status(200).json(contests);
     } catch (error) {
       console.error('Error fetching contests:', error);
       res.status(500).json({ message: 'コンテスト一覧の取得に失敗しました。', error });
@@ -276,5 +274,31 @@ router.post('/:id/apply', authenticateToken, async (req, res) => {
   });
   
 
-
+  router.put('/:id', authenticateToken, async (req, res) => {
+    try {
+      const { title, shortDescription, description, allowFinishedWorks } = req.body;
+  
+      const contest = await Contest.findById(req.params.id);
+      if (!contest) {
+        return res.status(404).json({ message: 'コンテストが見つかりませんでした。' });
+      }
+  
+      // **コンテスト作成者のみ編集可能**
+      if (contest.creator.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'このコンテストを編集する権限がありません。' });
+      }
+  
+      contest.title = title;
+      contest.shortDescription = shortDescription;
+      contest.description = description;
+      contest.allowFinishedWorks = allowFinishedWorks;
+  
+      await contest.save();
+  
+      res.status(200).json({ message: 'コンテストが更新されました。', contest });
+    } catch (error) {
+      console.error('Error updating contest:', error);
+      res.status(500).json({ message: 'コンテストの更新に失敗しました。', error: error.message });
+    }
+  });
   module.exports = router;
