@@ -23,11 +23,6 @@ const CustomEditor = ({ value, onChange }) => {
         },
       });
 
-      // 初期値を設定
-      if (value) {
-        quillInstance.current.root.innerHTML = value;
-      }
-
       // イベントリスナーを設定して、変更を親コンポーネントに通知
       quillInstance.current.on('text-change', () => {
         if (onChange) {
@@ -35,7 +30,13 @@ const CustomEditor = ({ value, onChange }) => {
         }
       });
     }
-  }, [value, onChange]); // value が変更されたときもリセット
+  }, [onChange]);
+
+  useEffect(() => {
+    if (quillInstance.current && value !== quillInstance.current.root.innerHTML) {
+      quillInstance.current.root.innerHTML = value;
+    }
+  }, [value]);
 
   return (
     <div>

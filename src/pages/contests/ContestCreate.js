@@ -125,6 +125,7 @@ const ContestCreate = ({ initialData, onSubmit }) => {
         if (storedIconPreview && storedIconName) {
             setIconPreview(storedIconPreview);
             setIconImage(base64ToFile(storedIconPreview, storedIconName));
+            console.log("testtt")
         }
 
         const storedHeaderPreview = localStorage.getItem('headerPreview');
@@ -232,6 +233,16 @@ const ContestCreate = ({ initialData, onSubmit }) => {
             setLoadingJudge(false);
         }
     }, []);
+
+    useEffect(() => {
+        const storedJudges = getLocalStorageData('judges', []);
+        const fetchStoredJudges = async () => {
+            const judgeInfos = await Promise.all(storedJudges.map(judge => fetchJudgeInfo(judge.id)));
+            setJudges(judgeInfos.filter(judge => judge !== null));
+        };
+        fetchStoredJudges();
+    }, [fetchJudgeInfo, getLocalStorageData]);
+
     const handleAddJudge = useCallback(async () => {
         if (!judgeId) {
             alert('審査員のアカウントIDを入力してください');
@@ -477,18 +488,22 @@ const ContestCreate = ({ initialData, onSubmit }) => {
                     onChange={(e) => setValue(e.target.value)}
                     error={isRequired && !value} // ✅ 必須項目が未入力の場合、エラー表示
                     helperText={isRequired && !value ? `${label}は必須です` : ''}
-
                 />
             ) : (
-                <TextField
-                    fullWidth
-                    placeholder="例: 1月中旬 / 春頃 / 2025年3月予定"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    error={isRequired && !value}
-                    helperText={isRequired && !value ? `${label}は必須です` : ''}
-
-                />
+                <Box>
+                    <TextField
+                        fullWidth
+                        placeholder="例: 1月中旬 / 春頃 / 2025年3月予定"
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        inputProps={{ maxLength: 30 }}
+                        error={isRequired && !value}
+                        helperText={isRequired && !value ? `${label}は必須です` : ''}
+                    />
+                    <Typography variant="caption" sx={{ color: '#555' }}>
+                        {value.length} / 30
+                    </Typography>
+                </Box>
             )}
         </Grid>
     ), []);
@@ -880,6 +895,7 @@ const DateSettings = React.memo(({
                     setType={setResultAnnouncementDateType}
                     isRequired={false}
                     renderDateInput={renderDateInput}
+
                 />
             </Grid>
         </Box>

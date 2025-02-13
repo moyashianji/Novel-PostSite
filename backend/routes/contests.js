@@ -252,9 +252,9 @@ router.post('/:id/apply', authenticateToken, async (req, res) => {
 
   router.get('/', async (req, res) => {
     try {
-      // ✅ 「募集中」のコンテストのみ取得
-      const contests = await Contest.find({ status: '募集中' });
-  
+      // 「募集中」「開催予定」「募集終了」「募集一時停止」のコンテストを取得
+      const contests = await Contest.find({ status: { $in: ['募集中', '開催予定', '募集終了', '募集一時停止中'] } });
+
       res.status(200).json(contests);
     } catch (error) {
       console.error('Error fetching contests:', error);
@@ -274,27 +274,95 @@ router.post('/:id/apply', authenticateToken, async (req, res) => {
   });
   
 
-  router.put('/:id', authenticateToken, async (req, res) => {
+  router.put('/:id', authenticateToken, upload.fields([{ name: 'iconImage' }, { name: 'headerImage' }]), async (req, res) => {
     try {
-      const { title, shortDescription, description, allowFinishedWorks } = req.body;
-  
+      const { 
+        title, 
+        shortDescription, 
+        description, 
+        applicationStartDate,
+        applicationEndDate,
+        reviewStartDate,
+        reviewEndDate,
+        resultAnnouncementDate,
+        enableJudges,
+        judges,
+        allowFinishedWorks,
+        allowPreStartDate,
+        restrictAI,
+        aiTags,
+        allowR18,
+        restrictGenres,
+        genres,
+        restrictWordCount,
+        minWordCount,
+        maxWordCount,
+        allowSeries,
+        minEntries,
+        maxEntries,
+        status
+      } = req.body;
+
+      // ✅ `Date` に変換できる場合は `Date` として保存、それ以外は `String`
+      const parseDateOrString = (value) => {
+        return !isNaN(Date.parse(value)) ? new Date(value) : value;
+      };
+
       const contest = await Contest.findById(req.params.id);
       if (!contest) {
         return res.status(404).json({ message: 'コンテストが見つかりませんでした。' });
       }
-  
+
       // **コンテスト作成者のみ編集可能**
       if (contest.creator.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'このコンテストを編集する権限がありません。' });
       }
-  
+
+      // 画像のパスを設定
+      const iconImage = req.files['iconImage'] ? `/uploads/contests/${req.files['iconImage'][0].filename}` : contest.iconImage;
+      const headerImage = req.files['headerImage'] ? `/uploads/contests/${req.files['headerImage'][0].filename}` : contest.headerImage;
+
+      // judges をパースして `position` が必須フィールドになっていることを確認
+      let parsedJudges = [];
+      if (judges) {
+        parsedJudges = JSON.parse(judges).map(judge => ({
+          userId: judge.id,
+          sns: judge.sns,
+        }));
+      }
+      console.log(title)
+      console.log(shortDescription)
+      console.log(description)
+
       contest.title = title;
       contest.shortDescription = shortDescription;
       contest.description = description;
-      contest.allowFinishedWorks = allowFinishedWorks;
-  
+      contest.iconImage = iconImage;
+      contest.headerImage = headerImage;
+      contest.applicationStartDate = parseDateOrString(applicationStartDate);
+      contest.applicationEndDate = parseDateOrString(applicationEndDate);
+      contest.reviewStartDate = reviewStartDate ? parseDateOrString(reviewStartDate) : null;
+      contest.reviewEndDate = reviewEndDate ? parseDateOrString(reviewEndDate) : null;
+      contest.resultAnnouncementDate = resultAnnouncementDate ? parseDateOrString(resultAnnouncementDate) : null;
+      contest.enableJudges = enableJudges === 'true';
+      contest.judges = judges ? parsedJudges : [];
+      contest.allowFinishedWorks = allowFinishedWorks === 'true';
+      contest.allowPreStartDate = allowPreStartDate === 'true';
+      contest.restrictAI = restrictAI === 'true';
+      contest.aiTags = aiTags ? JSON.parse(aiTags) : [];
+      contest.allowR18 = allowR18 === 'true';
+      contest.restrictGenres = restrictGenres === 'true';
+      contest.genres = genres ? JSON.parse(genres) : [];
+      contest.restrictWordCount = restrictWordCount === 'true';
+      contest.minWordCount = parseInt(minWordCount, 10) || 0;
+      contest.maxWordCount = parseInt(maxWordCount, 10) || 0;
+      contest.allowSeries = allowSeries === 'true';
+      contest.minEntries = parseInt(minEntries, 10) || 0;
+      contest.maxEntries = parseInt(maxEntries, 10) || Infinity;
+      contest.status = status;
+
       await contest.save();
-  
+
       res.status(200).json({ message: 'コンテストが更新されました。', contest });
     } catch (error) {
       console.error('Error updating contest:', error);

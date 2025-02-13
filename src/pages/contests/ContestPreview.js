@@ -145,7 +145,7 @@ const ContestPreview = () => {
                             {contest.title}
                         </Typography>
                         <Typography variant="h6" color="text.secondary" gutterBottom>
-                            {contest.shortDescription}
+                            {/*contest.shortDescription*/}
                         </Typography>
                         {/* WYSIWYG のリッチテキストをそのまま表示 */}
                         <div

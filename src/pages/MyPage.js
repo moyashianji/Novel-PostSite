@@ -246,7 +246,7 @@ const MyPage = () => {
                       <CardMedia
                         component="img"
                         height="180"
-                        image={`${API_URL}${contest.headerImage}`}
+                        image={`${API_URL}${contest.iconImage}`}
                         alt={contest.title}
                         sx={{
                           filter: 'brightness(0.8)', // 画像を暗くしてテキストを見やすく
