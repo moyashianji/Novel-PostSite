@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, Card, CardContent, Avatar, IconButton, Menu, MenuItem, Modal } from '@mui/material';
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import { Box, Button, TextField, Typography, Card, CardContent, Avatar, IconButton, Menu, MenuItem, Modal, InputAdornment } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import SendIcon from '@mui/icons-material/Send';
+import ReplyIcon from '@mui/icons-material/Reply';
 
 const ReportModal = ({ open, onClose, onSubmit }) => {
   const [reportText, setReportText] = useState('');
   const [charCount, setCharCount] = useState(0);
-  const API_URL = process.env.REACT_APP_API_URL;
 
   const handleSubmit = () => {
     if (reportText.trim() !== '') {
@@ -66,7 +67,7 @@ const CommentSection = ({ postId }) => {
   // ユーザー情報の取得
   const fetchUserInfo = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/user/me`, {
+      const response = await fetch(`/api/user/me`, {
         method: 'GET',
         credentials: 'include', // 認証トークンを含める
       });
@@ -81,12 +82,17 @@ const CommentSection = ({ postId }) => {
   useEffect(() => {
     fetchUserInfo(); // コンポーネントのマウント時にユーザー情報を取得
   }, []);
-  const fetchComments = async (page = 1) => {
+
+  const fetchComments = useCallback(async (page = 1, reset = false) => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/posts/${postId}/comments?page=${page}&limit=5`);
+      const response = await fetch(`/api/posts/${postId}/comments?page=${page}&limit=5`);
       const data = await response.json();
-      setComments(prevComments => [...prevComments, ...data.comments]);
+      if (reset) {
+        setComments(data.comments);
+      } else {
+        setComments(prevComments => [...prevComments, ...data.comments]);
+      }
       setTotalComments(data.totalComments);
       setTotalPages(data.totalPages);
       setCurrentPage(data.currentPage);
@@ -94,25 +100,26 @@ const CommentSection = ({ postId }) => {
       console.error('Error fetching comments:', error);
     }
     setLoading(false);
-  };
+  }, [ postId]);
 
   useEffect(() => {
-    fetchComments();
-  }, [postId]);
-  const handleLoadMore = () => {
+    fetchComments(1, true);
+  }, [fetchComments]);
+
+  const handleLoadMore = useCallback(() => {
     if (currentPage < totalPages) {
       fetchComments(currentPage + 1);
     }
-  };
+  }, [currentPage, totalPages, fetchComments]);
 
-  const handleCommentSubmit = async () => {
+  const handleCommentSubmit = useCallback(async () => {
     if (newComment.trim() === '') {
       alert('コメントを入力してください。');
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/posts/${postId}/comments`, {
+      const response = await fetch(`/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +131,7 @@ const CommentSection = ({ postId }) => {
       if (response.ok) {
         setNewComment('');
         setCharCount(0);
-        fetchComments();
+        fetchComments(1, true); // コメントリストをリセットして再取得
       } else {
         const errorData = await response.json();
         alert(errorData.message || 'コメントの追加に失敗しました。');
@@ -132,16 +139,16 @@ const CommentSection = ({ postId }) => {
     } catch (error) {
       console.error('Error adding comment:', error);
     }
-  };
+  }, [ postId, newComment, fetchComments]);
 
-  const handleReplySubmit = async (parentCommentId) => {
+  const handleReplySubmit = useCallback(async (parentCommentId) => {
     if (replyText.trim() === '') {
       alert('返信を入力してください。');
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/posts/${postId}/comments/${parentCommentId}/reply`, {
+      const response = await fetch(`/api/posts/${postId}/comments/${parentCommentId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +160,7 @@ const CommentSection = ({ postId }) => {
       if (response.ok) {
         setReplyText('');
         setReplyTarget(null);
-        fetchComments();
+        fetchComments(1, true); // コメントリストをリセットして再取得
       } else {
         const errorData = await response.json();
         alert(errorData.message || '返信の追加に失敗しました。');
@@ -161,9 +168,9 @@ const CommentSection = ({ postId }) => {
     } catch (error) {
       console.error('Error adding reply:', error);
     }
-  };
+  }, [ postId, replyText, fetchComments]);
 
-  const handleMenuOpen = (event, comment, replyComment = null, replyOpen) => {
+  const handleMenuOpen = useCallback((event, comment, replyComment = null) => {
     setAnchorEl(event.currentTarget);
     setSelectedComment(comment);
     console.log(comment)
@@ -175,14 +182,14 @@ const CommentSection = ({ postId }) => {
       // 返信がない場合、返信コメントの選択をクリア
       setSelectedReplyComment(null);
     }
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedComment(null);
-  };
+  }, []);
 
-  const handleDeleteComment = async () => {
+  const handleDeleteComment = useCallback(async () => {
     let isReply = false;
     let commentId = selectedComment._id; // デフォルトは元コメントのID
     let replyId = null;
@@ -192,7 +199,7 @@ const CommentSection = ({ postId }) => {
       replyId = selectedReplyComment._id; // 返信コメントのID
     }
     try {
-      let url = `${API_URL}/api/posts/${postId}/comments/${commentId}`;
+      let url = `/api/posts/${postId}/comments/${commentId}`;
       console.log(replyId)
       // 返信を削除する場合、replyIdをクエリパラメータとして送信
       if (isReply && replyId) {
@@ -209,7 +216,7 @@ const CommentSection = ({ postId }) => {
           // 返信を削除した場合の更新
           setComments(comments.map(comment => {
             if (comment._id === selectedComment._id) {
-              // spliceで状態から返信を削除
+              // 返信を削除
               comment.replies = comment.replies.filter(reply => reply._id !== replyId);
             }
             return comment;
@@ -225,106 +232,34 @@ const CommentSection = ({ postId }) => {
     } catch (error) {
       console.error('Error deleting comment or reply:', error);
     }
-  };
+  }, [ postId, selectedComment, selectedReplyComment, comments]);
 
-  const handleReplyClick = (comment) => {
+  const handleReplyClick = useCallback((comment) => {
     setReplyTarget(comment);
-  };
+  }, []);
 
   return (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6">コメント</Typography>
-      <TextField
-        label="コメントを入力"
-        variant="outlined"
-        fullWidth
-        multiline
-        rows={3}
-        value={newComment}
-        onChange={(e) => {
-          setNewComment(e.target.value);
-          setCharCount(e.target.value.length);
-        }}
-        inputProps={{ maxLength: 300 }}
-        sx={{ mb: 2 }}
+      <Typography variant="h6" gutterBottom>コメント</Typography>
+      <CommentInput
+        newComment={newComment}
+        setNewComment={setNewComment}
+        charCount={charCount}
+        setCharCount={setCharCount}
+        handleCommentSubmit={handleCommentSubmit}
       />
-      <Typography variant="h6">
-        {charCount}/300
-      </Typography>
-
-      <Button variant="contained" color="primary" onClick={handleCommentSubmit} sx={{ mt: 2 }}>
-        コメントを投稿
-      </Button>
-
-      {comments.map((comment, index) => (
-        <Box key={comment._id} sx={{ mt: 2 }}>
-          <Card key={comment._id}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Box display="flex" alignItems="center">
-                  <Avatar src={`${API_URL}${comment.author.icon}`} alt={comment.author.nickname} sx={{ marginRight: 1 }} />
-                  <Typography variant="body2" fontWeight="bold">
-                    {comment.author.nickname}
-                  </Typography>
-                </Box>
-                <IconButton onClick={(event) => handleMenuOpen(event, comment)}>
-                  <MoreVertIcon />
-                </IconButton>
-              </Box>
-              <Typography variant="body1">{comment.text}</Typography>
-              <Typography variant="body2" color="textSecondary" sx={{ px: 2 }}>
-                {new Date(comment.createdAt).toLocaleString()}
-              </Typography>
-              <Button variant="text" color="primary" onClick={() => handleReplyClick(comment)}>返信</Button>
-            </CardContent>
-          </Card>
-
-          {comment.replies && comment.replies.length > 0 && (
-            <Box sx={{ ml: 4 }}>
-              {comment.replies.map((reply) => (
-                <Card key={`${comment._id}-${reply._id}`} sx={{ mt: 2 }}>
-                  <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-
-                      <Box display="flex" alignItems="center">
-                        {
-                          // コンソールにアバターのリンクを出力
-                          console.log('Avatar URL:', `${API_URL}${reply.author.icon}`)
-                        }
-                        <Avatar src={`${API_URL}${reply.author.icon}`} alt={reply.author.nickname} sx={{ marginRight: 1 }} />
-                        <Typography variant="body2" fontWeight="bold">{reply.author.nickname}</Typography>
-                      </Box>
-                      <IconButton onClick={(event) => handleMenuOpen(event, comment, reply)}>
-                        <MoreVertIcon />
-                      </IconButton>
-                    </Box>
-
-                    <Typography variant="body1">{reply.text}</Typography>
-                    <Typography variant="body2" color="textSecondary" sx={{ px: 2 }}>
-                      {new Date(reply.createdAt).toLocaleString()}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-          )}
-
-          {replyTarget?._id === comment._id && (
-            <Box sx={{ ml: 4, mt: 2 }}>
-              <TextField
-                label="返信を入力"
-                variant="outlined"
-                fullWidth
-                multiline
-                rows={2}
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                sx={{ mb: 2 }}
-              />
-              <Button variant="contained" color="primary" onClick={() => handleReplySubmit(comment._id)}>返信を投稿</Button>
-            </Box>
-          )}
-        </Box>
+      {comments.map((comment) => (
+        <Comment
+          key={comment._id}
+          comment={comment}
+          handleMenuOpen={handleMenuOpen}
+          handleReplyClick={handleReplyClick}
+          replyTarget={replyTarget}
+          replyText={replyText}
+          setReplyText={setReplyText}
+          handleReplySubmit={handleReplySubmit}
+          API_URL={API_URL}
+        />
       ))}
       {currentPage < totalPages && (
         <Box display="flex" justifyContent="center" mt={2}>
@@ -333,22 +268,180 @@ const CommentSection = ({ postId }) => {
           </Button>
         </Box>
       )}
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} >
-        {/* 元コメント削除メニュー */}
-        {selectedComment && !selectedReplyComment && selectedComment.author._id === userId && (
-          <MenuItem onClick={handleDeleteComment}>コメントを削除</MenuItem>
-        )}
-        {/* 返信削除メニュー */}
-        {selectedReplyComment && selectedReplyComment.author._id === userId && (
-          <MenuItem onClick={handleDeleteComment}>返信を削除</MenuItem>
-        )}
-        {console.log(selectedComment)}
-        <MenuItem onClick={() => setReportOpen(true)}>通報</MenuItem>
-      </Menu>
-
+      <CommentMenu
+        anchorEl={anchorEl}
+        handleMenuClose={handleMenuClose}
+        handleDeleteComment={handleDeleteComment}
+        setReportOpen={setReportOpen}
+        selectedComment={selectedComment}
+        selectedReplyComment={selectedReplyComment}
+        userId={userId}
+      />
       <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} onSubmit={(text) => console.log(`Reported: ${text}`)} />
     </Box>
   );
 };
+
+const CommentInput = memo(({ newComment, setNewComment, charCount, setCharCount, handleCommentSubmit }) => (
+  <Box sx={{ mb: 2 }}>
+    <TextField
+      label="コメントを入力"
+      variant="outlined"
+      fullWidth
+      multiline
+      rows={3}
+      value={newComment}
+      onChange={(e) => {
+        setNewComment(e.target.value);
+        setCharCount(e.target.value.length);
+      }}
+      inputProps={{ maxLength: 300 }}
+      sx={{ mb: 1 }}
+      InputProps={{
+        endAdornment: (
+          <InputAdornment position="end">
+            <IconButton onClick={handleCommentSubmit} color="primary">
+              <SendIcon />
+            </IconButton>
+          </InputAdornment>
+        ),
+      }}
+    />
+    <Typography variant="caption" color="textSecondary">
+      {charCount}/300
+    </Typography>
+  </Box>
+));
+
+const Comment = memo(({
+  comment,
+  handleMenuOpen,
+  handleReplyClick,
+  replyTarget,
+  replyText,
+  setReplyText,
+  handleReplySubmit,
+  API_URL
+}) => (
+  <Box key={comment._id} sx={{ mt: 2 }}>
+    <Card sx={{ mb: 2, borderRadius: 2, boxShadow: 3 }}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box display="flex" alignItems="center">
+            <Avatar src={`${comment.author.icon}`} alt={comment.author.nickname} sx={{ marginRight: 1 }} />
+            <Typography variant="body2" fontWeight="bold">
+              {comment.author.nickname}
+            </Typography>
+          </Box>
+          <IconButton onClick={(event) => handleMenuOpen(event, comment)}>
+            <MoreVertIcon />
+          </IconButton>
+        </Box>
+        <Typography variant="body1" sx={{ mt: 1, wordBreak: 'break-word' }}>{comment.text}</Typography>
+        <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+          {new Date(comment.createdAt).toLocaleString()}
+        </Typography>
+        <Button
+          variant="text"
+          color="primary"
+          startIcon={<ReplyIcon />}
+          onClick={() => handleReplyClick(comment)}
+          sx={{ mt: 1 }}
+        >
+          返信
+        </Button>
+      </CardContent>
+    </Card>
+    {comment.replies && comment.replies.length > 0 && (
+      <Box sx={{ ml: 4 }}>
+        {comment.replies.map((reply) => (
+          <Reply
+            key={`${comment._id}-${reply._id}`}
+            comment={comment}
+            reply={reply}
+            handleMenuOpen={handleMenuOpen}
+            API_URL={API_URL}
+          />
+        ))}
+      </Box>
+    )}
+    {replyTarget?._id === comment._id && (
+      <ReplyInput
+        replyText={replyText}
+        setReplyText={setReplyText}
+        handleReplySubmit={handleReplySubmit}
+        commentId={comment._id}
+      />
+    )}
+  </Box>
+));
+
+const Reply = memo(({ comment, reply, handleMenuOpen, API_URL }) => (
+  <Card key={`${comment._id}-${reply._id}`} sx={{ mt: 2, borderRadius: 2, boxShadow: 2 }}>
+    <CardContent>
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Box display="flex" alignItems="center">
+          <Avatar src={`${reply.author.icon}`} alt={reply.author.nickname} sx={{ marginRight: 1 }} />
+          <Typography variant="body2" fontWeight="bold">{reply.author.nickname}</Typography>
+        </Box>
+        <IconButton onClick={(event) => handleMenuOpen(event, comment, reply)}>
+          <MoreVertIcon />
+        </IconButton>
+      </Box>
+      <Typography variant="body1" sx={{ mt: 1, wordBreak: 'break-word' }}>{reply.text}</Typography>
+      <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+        {new Date(reply.createdAt).toLocaleString()}
+      </Typography>
+    </CardContent>
+  </Card>
+));
+
+const ReplyInput = memo(({ replyText, setReplyText, handleReplySubmit, commentId }) => (
+  <Box sx={{ ml: 4, mt: 2 }}>
+    <TextField
+      label="返信を入力"
+      variant="outlined"
+      fullWidth
+      multiline
+      rows={2}
+      value={replyText}
+      onChange={(e) => setReplyText(e.target.value)}
+      inputProps={{ maxLength: 300 }} // 300文字制限を追加
+      sx={{ mb: 1 }}
+      InputProps={{
+        endAdornment: (
+          <InputAdornment position="end">
+            <IconButton onClick={() => handleReplySubmit(commentId)} color="primary">
+              <SendIcon />
+            </IconButton>
+          </InputAdornment>
+        ),
+      }}
+    />
+    <Typography variant="caption" color="textSecondary">
+      {replyText.length}/300
+    </Typography>
+  </Box>
+));
+
+const CommentMenu = memo(({
+  anchorEl,
+  handleMenuClose,
+  handleDeleteComment,
+  setReportOpen,
+  selectedComment,
+  selectedReplyComment,
+  userId
+}) => (
+  <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+    {selectedComment && !selectedReplyComment && selectedComment.author._id === userId && (
+      <MenuItem onClick={handleDeleteComment}>コメントを削除</MenuItem>
+    )}
+    {selectedReplyComment && selectedReplyComment.author._id === userId && (
+      <MenuItem onClick={handleDeleteComment}>返信を削除</MenuItem>
+    )}
+    <MenuItem onClick={() => setReportOpen(true)}>通報</MenuItem>
+  </Menu>
+));
 
 export default CommentSection;

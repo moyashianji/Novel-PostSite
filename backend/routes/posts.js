@@ -14,6 +14,8 @@ const path = require('path');
 const router = express.Router();
 const cron = require('node-cron');  // 定期実行のためのライブラリ
 const { client: redisClient, ensureRedisConnection } = require('../utils/redisClient');
+const { getEsClient } = require('../utils/esClient');
+const esClient = getEsClient();
 
 const viewTracking = new Map(); // ユーザーごとに閲覧を追跡
 // 全てのPostドキュメントにviewCounterフィールドが無い場合は0に初期化
@@ -286,21 +288,48 @@ cron.schedule('*/1 * * * *', async () => {  // 5分ごとに実行
     console.error('Error during batch update of view counts:', error);
   }
 });
-// 作品の検索エンドポイント
-// server.js に追加
+
 router.get('/search', async (req, res) => {
   try {
+    if (!esClient) {
+      console.error('❌ Elasticsearch クライアントが初期化されていません');
+      return res.status(500).json({ message: 'Elasticsearch クライアントが初期化されていません。' });
+    }
+
+    console.log('🔍 検索開始: ', req.query.query);
     const searchTerm = req.query.query;
-    const posts = await Post.find({
-      $or: [
-        { title: { $regex: searchTerm, $options: 'i' } },
-        { tags: { $regex: searchTerm, $options: 'i' } }
-      ]
-    }).populate('author', 'nickname icon'); // author を populate する
+
+    // 1️⃣ Elasticsearch で `_id` を取得
+    const response = await esClient.search({
+      index: 'posts',
+      body: {
+        query: {
+          multi_match: {
+            query: searchTerm,
+            fields: ['title', 'tags']
+          }
+        }
+      }
+    });
+
+    const postIds = response.hits.hits.map(hit => hit._id);
+
+    console.log(`🔗 Elasticsearch から取得した _id の数: ${postIds.length}`);
+
+    if (postIds.length === 0) {
+      return res.json([]);
+    }
+
+    // 2️⃣ MongoDB から該当するデータを取得
+    const posts = await Post.find({ _id: { $in: postIds } })
+      .populate('author')  // 必要なら `comments` なども populate 可能
+      .lean(); // パフォーマンス最適化のために `.lean()` を追加
+
+    console.log(`✅ MongoDB から取得したデータ数: ${posts.length}`);
 
     res.json(posts);
   } catch (error) {
-    console.error('検索エンドポイントでのエラー:', error);
+    console.error('❌ 検索エンドポイントでのエラー:', error);
     res.status(500).json({ message: '検索結果の取得に失敗しました。' });
   }
 });

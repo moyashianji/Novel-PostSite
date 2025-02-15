@@ -1,7 +1,6 @@
-// src/pages/SearchPage.js
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Container, Grid, Typography } from '@mui/material';
+import { Container, Grid, Typography, CircularProgress } from '@mui/material';
 import PostCard from '../components/PostCard';
 
 const useQuery = () => {
@@ -9,24 +8,36 @@ const useQuery = () => {
 };
 
 const SearchPage = () => {
-  const query = useQuery().get('query');
+  const query = useQuery().get('query') || ''; // クエリが null の場合に空文字を設定
   const [searchResults, setSearchResults] = useState([]);
-  const API_URL = process.env.REACT_APP_API_URL;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchSearchResults = async () => {
+      if (!query.trim()) return; // クエリが空の場合は処理しない
+
+      setLoading(true);
+      setError('');
+
       try {
-        const response = await fetch(`${API_URL}/api/posts/search?query=${query}`);
+        const response = await fetch(`/api/posts/search?query=${encodeURIComponent(query)}`);
         const data = await response.json();
-        setSearchResults(data);
+
+        if (response.ok) {
+          setSearchResults(data || []); // `undefined` を防ぐためにデフォルトで空配列
+        } else {
+          setError('検索に失敗しました');
+        }
       } catch (error) {
-        console.error('Error fetching search results:', error);
+        console.error('❌ Error fetching search results:', error);
+        setError('検索に失敗しました');
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (query) {
-      fetchSearchResults();
-    }
+    fetchSearchResults();
   }, [query]);
 
   return (
@@ -34,17 +45,22 @@ const SearchPage = () => {
       <Typography variant="h5" gutterBottom>
         "{query}" の検索結果
       </Typography>
-      <Grid container spacing={3}>
-        {searchResults.length > 0 ? (
-          searchResults.map((post) => (
+
+      {loading ? (
+        <CircularProgress sx={{ display: 'block', margin: '20px auto' }} />
+      ) : error ? (
+        <Typography color="error">{error}</Typography>
+      ) : searchResults.length > 0 ? (
+        <Grid container spacing={3}>
+          {searchResults.map((post) => (
             <Grid item xs={12} sm={6} md={4} key={post._id}>
               <PostCard post={post} />
             </Grid>
-          ))
-        ) : (
-          <Typography variant="body1">検索結果が見つかりませんでした。</Typography>
-        )}
-      </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Typography variant="body1">検索結果が見つかりませんでした。</Typography>
+      )}
     </Container>
   );
 };

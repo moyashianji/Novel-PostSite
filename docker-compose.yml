@@ -26,11 +26,13 @@ services:
     environment:
       - MONGO_URI=mongodb://mongo:27017/novel-site  # ホストのMongoDBに接続
       - REDIS_URL=redis://redis:6379  # ここに追加（Redisへの接続設定）
+      - ELASTICSEARCH_URL=http://elasticsearch:9200  # Elasticsearchへの接続設定
     ports:
       - "5000:5000"
     depends_on:
       - frontend
       - redis  # Redisの依存関係を追加
+      - elasticsearch  # Elasticsearchの依存関係を追加      
 
   redis:
     image: redis:latest
@@ -38,6 +40,28 @@ services:
     ports:
       - "6379:6379"
     command: ["redis-server"]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false  # 認証を無効化（開発環境）
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data  # データを永続化      
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.17.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch      
   nginx:
     image: nginx:alpine
     ports:
@@ -51,3 +75,4 @@ services:
 
 volumes:
   mongo-data:
+  elasticsearch-data:  # Elasticsearch のデータを保存

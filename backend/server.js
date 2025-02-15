@@ -12,6 +12,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const cookieParser = require('cookie-parser');  // cookie-parser をインポート
 const { client: redisClient, ensureRedisConnection } = require('./utils/redisClient');
+const { getEsClient } = require('./utils/esClient');
 
 //モデルのインポート
 const User = require('./models/User');
@@ -94,13 +95,114 @@ const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
+const esClient = getEsClient();
+console.log('🔍 Elasticsearch Client initialized in server.js');
 
+async function checkElasticsearchConnection() {
+  try {
+    console.log('🔍 Elasticsearch 接続確認中...');
+    
+    // 接続確認
+    const ping = await esClient.ping();
+    if (ping) {
+      console.log('✅ Elasticsearch is connected!');
+    }
+
+    // クラスタ情報を取得
+    const info = await esClient.info();
+    console.log(`📝 Elasticsearch クラスタ情報:
+  - クラスタ名: ${info.cluster_name}
+  - バージョン: ${info.version.number}
+  - ノード名: ${info.name}
+  - ステータス: ${info.tagline}`);
+
+  } catch (error) {
+    console.error('❌ Elasticsearch cluster is down!', error);
+  }
+}
+
+// アプリ起動時に接続チェック
+checkElasticsearchConnection();
+// MongoDB に接続（既存）
 mongoose.connect('mongodb://host.docker.internal:27017/novel-site', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('MongoDB connected'))
+.then(async () => {
+  console.log('MongoDB connected');
+
+  // 初回のみ Elasticsearch にデータを送る
+ // await migrateDataToElasticsearch();
+})
 .catch(err => console.error('MongoDB connection error:', err));
+
+
+//async function migrateDataToElasticsearch() {
+//  try {
+//    console.log('🔍 Elasticsearch へデータを送信中...');
+//
+//    // まだ Elasticsearch に送信していないデータを取得
+//    const posts = await Post.find({});
+//
+//    console.log('📝 MongoDB から取得したデータ:', JSON.stringify(posts, null, 2));
+//
+//    if (!posts || posts.length === 0) {
+//      console.log('✅ すでにすべてのデータが Elasticsearch に送信済みです。');
+//      return;
+//    }
+//
+//    posts.forEach((post) => {
+//      if (!post.title || !post.content) {
+//        console.warn(`⚠ スキップ: 投稿 ${post._id} は title または content が不足しています。`);
+//      }
+//    });
+//
+//    // Elasticsearch にデータを一括登録 (Bulk API)
+//    const body = posts.flatMap((post) => {
+//      if (!post.title || !post.content) {
+//        return []; // スキップ
+//      }
+//      return [
+//        { index: { _index: 'posts', _id: post._id.toString() } },
+//        { title: post.title, content: post.content, author: post.author, createdAt: post.createdAt }
+//      ];
+//    });
+//
+//    if (body.length === 0) {
+//      console.log('✅ 送信するデータがありません。スキップします。');
+//      return;
+//    }
+//
+//    console.log('📤 送信データ:', JSON.stringify(body, null, 2));
+//
+//    const bulkResponse = await esClient.bulk({ refresh: true, body });
+//
+//    if (!bulkResponse || !bulkResponse.body) {
+//      console.error('❌ Elasticsearch へのデータ送信失敗: `bulkResponse` が不正');
+//      return;
+//    }
+//
+//    // エラーのあるデータをチェック
+//    const failedItems = bulkResponse.body.items.filter(item => item.index && item.index.error);
+//    if (failedItems.length > 0) {
+//      console.error('❌ Elasticsearch への一部データ送信に失敗:', JSON.stringify(failedItems, null, 2));
+//    }
+//
+//    // 成功したデータの `_id` を取得
+//    const successIds = bulkResponse.body.items
+//      .filter(item => item.index && !item.index.error)
+//      .map(item => item.index._id);
+//
+//    if (successIds.length > 0) {
+//      console.log(`✅ ${successIds.length} 件のデータを Elasticsearch に送信しました。`);
+//      console.log('✅ `.env` の `MIGRATED` を `true` に更新してください。');
+//    }
+//
+//  } catch (error) {
+//    console.error('❌ Elasticsearch へのデータ移行エラー:', error);
+//  }
+//}
+
 // セッションストアのログを確認
 MongoStore.create({
   mongoUrl: 'mongodb://host.docker.internal:27017/novel-site',
@@ -109,6 +211,9 @@ MongoStore.create({
 }).on('error', function(error) {
   console.error('Session store error:', error);
 });
+
+
+
 // ルートのマウント
 app.use('/api', authRoutes);
 app.use('/api/posts', postRoutes);
@@ -131,3 +236,8 @@ app.use((err, req, res, next) => {
 app.listen(5000, () => {
   console.log(`Server is running on port 5000`);
 });
+
+// Elasticsearchクライアントをエクスポート
+console.log('🔍 Elasticsearch Client Initialized:', esClient); // 追加
+
+module.exports = { esClient };
