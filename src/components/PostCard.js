@@ -62,7 +62,7 @@ const PostTags = React.memo(({ tags }) => {
   const navigate = useNavigate();
 
   const handleTagClick = (tag) => {
-    navigate(`/search?query=${encodeURIComponent(tag)}`);
+    navigate(`/search?mustInclude=${encodeURIComponent(tag)}`);
   };
 
   return (

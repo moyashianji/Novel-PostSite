@@ -227,7 +227,7 @@ const ContestDetail = () => {
   }, [contest, sortOrder]);
 
   const handleTagClick = useCallback((tag) => {
-    navigate(`/search?query=${encodeURIComponent(tag)}`);
+    navigate(`/search?mustInclude=${encodeURIComponent(tag)}`);
   }, [navigate]);
 
   const getStatusChip = useCallback((status) => {

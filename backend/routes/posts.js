@@ -116,7 +116,7 @@ router.get('/:id([0-9a-fA-F]{24})', async (req, res) => {
 });
 // 新規投稿エンドポイント
 router.post('/', authenticateToken, async (req, res) => {
-  const { title, content, description, tags, original,adultContent,aiGenerated, charCount, author, series } = req.body;
+  const { title, content, description, tags, original, adultContent, aiGenerated, charCount, author, series } = req.body;
 
   // バリデーション
   if (!title || !content || !description || !tags || tags.length === 0 || aiGenerated === null || original === null || adultContent === null) {
@@ -157,7 +157,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.post('/:id([0-9a-fA-F]{24})/update', authenticateToken, async (req, res) => {
   try {
     const postId = req.params.id;
-    const { title, content, description, tags, original, adultContent, aiGenerated ,charCount} = req.body;
+    const { title, content, description, tags, original, adultContent, aiGenerated, charCount } = req.body;
 
     // 投稿をデータベースから取得
     const post = await Post.findById(postId);
@@ -215,7 +215,7 @@ const viewRateLimiter = rateLimit({
 });
 
 // 閲覧数更新エンドポイント
-router.post('/:id([0-9a-fA-F]{24})/view', viewRateLimiter,async (req, res) => {
+router.post('/:id([0-9a-fA-F]{24})/view', viewRateLimiter, async (req, res) => {
   const postId = req.params.id;
   const userId = req.user ? req.user._id.toString() : req.ip;
   const userKey = `post:${postId}:viewer:${userId}`; // ユーザーごとの閲覧キー
@@ -227,30 +227,30 @@ router.post('/:id([0-9a-fA-F]{24})/view', viewRateLimiter,async (req, res) => {
     console.log('Ensuring Redis connection...');
     await ensureRedisConnection();
     console.log('Redis connection ensured.');
-  
-    console.log(`Setting Redis key: ${userKey} with TTL: ${viewTTL}`);
-// ユーザーが5分以上経過している場合にのみキーを設定
-const isSet = await redisClient.set(userKey, '1', {
-  NX: true, // キーが存在しない場合のみ設定
-  EX: viewTTL, // 有効期限を設定
-});
 
-if (!isSet) {
-  console.log('Key already exists. Skipping view count update.');
-  return res.status(200).json({ message: '閲覧数は更新されませんでした。' });
-}
+    console.log(`Setting Redis key: ${userKey} with TTL: ${viewTTL}`);
+    // ユーザーが5分以上経過している場合にのみキーを設定
+    const isSet = await redisClient.set(userKey, '1', {
+      NX: true, // キーが存在しない場合のみ設定
+      EX: viewTTL, // 有効期限を設定
+    });
+
+    if (!isSet) {
+      console.log('Key already exists. Skipping view count update.');
+      return res.status(200).json({ message: '閲覧数は更新されませんでした。' });
+    }
     console.log(`Key ${userKey} set with TTL.`);
-  
+
     console.log(`Incrementing view count for ${viewKey}`);
     await redisClient.incr(viewKey);
     console.log(`View count incremented for ${viewKey}`);
-  
+
     res.status(200).json({ message: '閲覧数が一時的に更新されました。' });
   } catch (error) {
     console.error('Error updating view counter:', error);
     res.status(500).json({ message: '閲覧数の更新に失敗しました。', error: error.message });
   }
-  
+
 });
 // 定期バッチ処理 - RedisからMongoDBに閲覧数を保存
 cron.schedule('*/1 * * * *', async () => {  // 5分ごとに実行
@@ -268,7 +268,7 @@ cron.schedule('*/1 * * * *', async () => {  // 5分ごとに実行
       // MongoDBに閲覧数を反映
       if (viewCount) {
         await Post.findByIdAndUpdate(postId, { $inc: { viewCounter: parseInt(viewCount, 10) } });
-           // MongoDBのViewAnalyticsモデルに新しい記録を追加
+        // MongoDBのViewAnalyticsモデルに新しい記録を追加
         const timestamp = new Date(); // 現在の時刻を取得
         // MongoDBに閲覧数を反映（viewsに新しいデータを追加）
         await ViewAnalytics.findOneAndUpdate(
@@ -292,38 +292,86 @@ cron.schedule('*/1 * * * *', async () => {  // 5分ごとに実行
 router.get('/search', async (req, res) => {
   try {
     if (!esClient) {
-      console.error('❌ Elasticsearch クライアントが初期化されていません');
+      console.error('[ERROR] Elasticsearch クライアントが初期化されていません');
       return res.status(500).json({ message: 'Elasticsearch クライアントが初期化されていません。' });
     }
 
-    console.log('🔍 検索開始: ', req.query.query);
-    const searchTerm = req.query.query;
+    console.log('[INFO] 検索開始: ', req.query.mustInclude);
 
-    // 1️⃣ Elasticsearch で `_id` を取得
+    const searchTerm = req.query.query || '';
+    const mustInclude = req.query.mustInclude || '';  // すべて含む
+    const shouldInclude = req.query.shouldInclude || '';  // いずれか含む
+    const mustNotInclude = req.query.mustNotInclude || '';  // 除外する
+    const fields = req.query.fields ? req.query.fields.split(',') : ['title', 'content', 'tags']; // 検索対象
+    const tagSearchType = req.query.tagSearchType || 'partial'; // タグ検索の精度
+
+    // 🔍 検索キーワードを分割
+    const mustIncludeTerms = mustInclude.split(/\s+/).filter(term => term.trim() !== "");
+    const shouldIncludeTerms = shouldInclude.split(/\s+/).filter(term => term.trim() !== "");
+    const mustNotIncludeTerms = mustNotInclude.split(/\s+/).filter(term => term.trim() !== "");
+
+    // ✅ Elasticsearch のクエリ構築
+    let query = { bool: { must: [], should: [], must_not: [], filter: [] } };
+
+    // 🎯 AND検索 (must)
+    if (mustIncludeTerms.length > 0) {
+      query.bool.must = mustIncludeTerms.map(term => ({
+        multi_match: {
+          query: term,
+          fields: fields,
+          fuzziness: "AUTO",
+          operator: "and" // すべての単語を含む
+        }
+      }));
+    }
+
+    // 🎯 OR検索 (should)
+    if (shouldIncludeTerms.length > 0) {
+      query.bool.should = shouldIncludeTerms.map(term => ({
+        multi_match: {
+          query: term,
+          fields: fields,
+          fuzziness: "AUTO",
+          operator: "or" // どれか1つを含む
+        }
+      }));
+    }
+
+    // 🎯 除外検索 (must_not)
+    if (mustNotIncludeTerms.length > 0) {
+      query.bool.must_not = mustNotIncludeTerms.map(term => ({
+        multi_match: {
+          query: term,
+          fields: fields,
+          fuzziness: "AUTO"
+        }
+      }));
+    }
+
+    // 🔍 Elasticsearch 検索実行
     const response = await esClient.search({
       index: 'posts',
-      body: {
-        query: {
-          multi_match: {
-            query: searchTerm,
-            fields: ['title', 'tags']
-          }
+      body: { query },
+      highlight: {  // ハイライト表示
+        fields: {
+          title: {},
+          content: {}
         }
       }
     });
 
     const postIds = response.hits.hits.map(hit => hit._id);
 
-    console.log(`🔗 Elasticsearch から取得した _id の数: ${postIds.length}`);
+    console.log(`[INFO] Elasticsearch から取得した _id の数: ${postIds.length}`);
 
     if (postIds.length === 0) {
       return res.json([]);
     }
 
-    // 2️⃣ MongoDB から該当するデータを取得
+    // 🔄 MongoDB からデータを取得
     const posts = await Post.find({ _id: { $in: postIds } })
-      .populate('author')  // 必要なら `comments` なども populate 可能
-      .lean(); // パフォーマンス最適化のために `.lean()` を追加
+      .populate('author')
+      .lean();
 
     console.log(`✅ MongoDB から取得したデータ数: ${posts.length}`);
 
@@ -333,7 +381,6 @@ router.get('/search', async (req, res) => {
     res.status(500).json({ message: '検索結果の取得に失敗しました。' });
   }
 });
-
 
 // いいねした作品リストを取得するエンドポイント
 router.get('/user/liked', authenticateToken, async (req, res) => {

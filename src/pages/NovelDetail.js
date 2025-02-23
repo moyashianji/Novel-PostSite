@@ -242,7 +242,7 @@ const NovelDetail = () => {
   }, [navigate]);
 
   const handleTagClick = useCallback((tag) => {
-    navigate(`/search?query=${encodeURIComponent(tag)}`);
+    navigate(`/search?mustInclude=${encodeURIComponent(tag)}`);
   }, [navigate]);
 
   if (!post) return <div>Loading...</div>;

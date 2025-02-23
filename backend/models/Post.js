@@ -1,6 +1,7 @@
 // models/Post.js
 const mongoose = require('mongoose');
 const { getEsClient } = require('../utils/esClient'); // 動的に取得
+const sanitizeHtml = require('sanitize-html'); // HTMLタグを削除するライブラリ
 
 const esClient = getEsClient(); // getEsClient() で取得
 console.log('🔍 Elasticsearch Client:', esClient);
@@ -52,16 +53,28 @@ postSchema.post('save', async function (doc) {
   try {
     if (!esClient) throw new Error('❌ Elasticsearch client is undefined');
 
+    // 🔍 HTMLタグを削除
+    const cleanContent = sanitizeHtml(doc.content, {
+      allowedTags: [],  // 🚀 すべてのHTMLタグを削除
+      allowedAttributes: {}  // 🔹 すべての属性も削除
+    });
+
+    console.log('🔍 元のコンテンツ:', doc.content);
+    console.log('🛠 サニタイズ後のコンテンツ:', cleanContent);
+
+    // Elasticsearch に保存
     const response = await esClient.index({
       index: 'posts',
       id: doc._id.toString(),
       body: {
         title: doc.title,
-        content: doc.content,
+        content: cleanContent,  // 🔥 タグ除去後のコンテンツを使用
+        tags: doc.tags || [],
         author: doc.author.toString(),
         createdAt: doc.createdAt,
       },
     });
+
     console.log('✅ Document indexed in Elasticsearch:', response);
   } catch (error) {
     console.error('❌ Error indexing document in Elasticsearch:', error);

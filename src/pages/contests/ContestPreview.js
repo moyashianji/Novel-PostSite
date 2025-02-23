@@ -78,7 +78,7 @@ const ContestPreview = () => {
         />
     );
     const handleTagClick = (tag) => {
-        navigate(`/search?query=${encodeURIComponent(tag)}`);
+        navigate(`/search?mustInclude=${encodeURIComponent(tag)}`);
     };
     return (
         <Grid container spacing={2} sx={{ maxWidth: '1400px', margin: '0 auto', paddingTop: 4 }}>

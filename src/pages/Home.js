@@ -474,7 +474,7 @@ const TagContainer = React.memo(({ container, index, handleDeleteTagContainer, h
             <Button 
             variant="outlined"
              color="primary" 
-             onClick={() => navigate(`/search?query=${encodeURIComponent(container.tag)}`
+             onClick={() => navigate(`/search?mustInclude=${encodeURIComponent(container.tag)}`
             )}>
               全部の作品を見る
             </Button>
