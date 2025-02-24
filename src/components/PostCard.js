@@ -3,10 +3,11 @@ import { Card, Typography, Avatar, Box, Chip } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 
 const PostCard = ({ post }) => {
-  const { _id, title, author, description, content, wordCount, tags } = post;
+  const { _id, title, author, description, content, wordCount, tags, series } = post; // ✅ `series` を追加
 
   return (
     <Card sx={{ marginBottom: 2, padding: 2 }}>
+      {series && <PostSeries series={series} />} {/* ✅ シリーズタイトルを追加 */}
       <PostTitle _id={_id} title={title} />
       <PostAuthor author={author} />
       <PostDescription description={description} />
@@ -16,6 +17,23 @@ const PostCard = ({ post }) => {
     </Card>
   );
 };
+
+const PostSeries = React.memo(({ series }) => {
+  if (!series || !series.title) return null; // ✅ シリーズがない場合は何も表示しない
+
+  const maxLength = 20;
+  const truncatedTitle =
+    series.title.length > maxLength ? series.title.substring(0, maxLength) + '...' : series.title;
+
+  return (
+    <Link to={`/series/${series._id}/works`} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Typography variant="subtitle2" color="primary" gutterBottom>
+        {truncatedTitle}
+      </Typography>
+    </Link>
+  );
+});
+
 
 const PostTitle = React.memo(({ _id, title }) => (
   <Link to={`/novel/${_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -31,7 +49,7 @@ const PostAuthor = React.memo(({ author }) => (
       <Avatar 
         src={`${author.icon}`} 
         alt={author.nickname} 
-        sx={{ width: 32, height: 32 }}  // アイコンサイズを小さく
+        sx={{ width: 32, height: 32 }} 
       />
     </Link>
     <Link to={`/user/${author._id}`} style={{ textDecoration: 'none', color: 'inherit', marginLeft: '8px' }}>
@@ -72,7 +90,7 @@ const PostTags = React.memo(({ tags }) => {
           key={index}
           label={tag}
           sx={{ marginRight: 0.5, marginBottom: 0.5 }}
-          onClick={() => handleTagClick(tag)} // タグをクリックしたら検索ページに遷移
+          onClick={() => handleTagClick(tag)}
         />
       ))}
     </Box>

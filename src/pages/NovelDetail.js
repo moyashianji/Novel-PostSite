@@ -30,14 +30,13 @@ const NovelDetail = () => {
   const [selectedPostId, setSelectedPostId] = useState(id);
   const [seriesTitle, setSeriesTitle] = useState([]);
 
-  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     let isMounted = true; // コンポーネントがマウントされているかどうかを追跡
 
     const fetchPost = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/posts/${id}`);
+        const response = await fetch(`/api/posts/${id}`);
         const data = await response.json();
 
         if (isMounted) {
@@ -51,8 +50,8 @@ const NovelDetail = () => {
           if (data.series) {
             console.log('Series ID:', data.series);
 
-            const seriesResponse = await fetch(`${API_URL}/api/series/${data.series}/posts`);
-            const seriestitleResponse = await fetch(`${API_URL}/api/series/${data.series}/title`);
+            const seriesResponse = await fetch(`/api/series/${data.series}/posts`);
+            const seriestitleResponse = await fetch(`/api/series/${data.series}/title`);
 
             if (seriesResponse.ok && seriestitleResponse.ok) {
               const seriesData = await seriesResponse.json();
@@ -68,24 +67,24 @@ const NovelDetail = () => {
           }
 
           // 閲覧数のカウントを更新
-          await fetch(`${API_URL}/api/posts/${id}/view`, { method: 'POST' });
+          await fetch(`/api/posts/${id}/view`, { method: 'POST' });
 
           // ログイン済みのユーザーの状態を確認
-          const likeResponse = await fetch(`${API_URL}/api/posts/${id}/isLiked`, {
+          const likeResponse = await fetch(`/api/posts/${id}/isLiked`, {
             credentials: 'include',  // クッキーを含めてリクエストを送信
 
           });
           const likeData = await likeResponse.json();
           setHasLiked(likeData.hasLiked);
 
-          const bookshelfResponse = await fetch(`${API_URL}/api/posts/${id}/isInBookshelf`, {
+          const bookshelfResponse = await fetch(`/api/posts/${id}/isInBookshelf`, {
             credentials: 'include',  // クッキーを含めてリクエストを送信
 
           });
           const bookshelfData = await bookshelfResponse.json();
           setIsInBookshelf(bookshelfData.isInBookshelf);
 
-          const followResponse = await fetch(`${API_URL}/api/users/${data.author._id}/is-following`, {
+          const followResponse = await fetch(`/api/users/${data.author._id}/is-following`, {
             credentials: 'include',  // クッキーを含めてリクエストを送信
 
           });
@@ -105,7 +104,7 @@ const NovelDetail = () => {
     return () => {
       isMounted = false; // クリーンアップ時にマウント状態を解除
     };
-  }, [id, API_URL]); // 依存配列に`id`と`API_URL`を指定
+  }, [id]); // 依存配列に`id`と`API_URL`を指定
 
   useEffect(() => {
     if (location.state?.scrollTo) {
@@ -134,7 +133,7 @@ const NovelDetail = () => {
   const handleGoodClick = useCallback(async () => {
     try {
 
-      const response = await fetch(`${API_URL}/api/posts/${id}/good`, {
+      const response = await fetch(`/api/posts/${id}/good`, {
         method: 'POST',
         credentials: 'include',  // クッキーを含めてリクエストを送信
 
@@ -151,12 +150,12 @@ const NovelDetail = () => {
     } catch (error) {
       console.error('Error toggling good:', error);
     }
-  }, [API_URL, id, hasLiked]);
+  }, [ id, hasLiked]);
 
   const handleBookshelfClick = useCallback(async () => {
     try {
 
-      const response = await fetch(`${API_URL}/api/posts/${id}/bookshelf`, {
+      const response = await fetch(`/api/posts/${id}/bookshelf`, {
         method: 'POST',
         credentials: 'include',  // クッキーを含めてリクエストを送信
       });
@@ -172,7 +171,7 @@ const NovelDetail = () => {
     } catch (error) {
       console.error('Error toggling bookshelf status:', error);
     }
-  }, [API_URL, id, isInBookshelf]);
+  }, [ id, isInBookshelf]);
 
   const handleBookmarkClick = useCallback(() => {
     setIsBookmarkMode(!isBookmarkMode);
@@ -183,7 +182,7 @@ const NovelDetail = () => {
       const bookmarkPosition = window.scrollY + event.clientY;
 
       try {
-        const response = await fetch(`${API_URL}/api/me/bookmark`, {
+        const response = await fetch(`/api/me/bookmark`, {
           method: 'POST',
           credentials: 'include',  // クッキーを含めてリクエストを送信
 
@@ -205,15 +204,15 @@ const NovelDetail = () => {
         setIsBookmarkMode(false);
       }
     }
-  }, [API_URL, id, isBookmarkMode]);
+  }, [ id, isBookmarkMode]);
 
   const handleFollowToggle = useCallback(async () => {
 
     try {
 
       const url = isFollowing
-        ? `${API_URL}/api/users/unfollow/${post.author._id}`
-        : `${API_URL}/api/users/follow/${post.author._id}`;
+        ? `/api/users/unfollow/${post.author._id}`
+        : `/api/users/follow/${post.author._id}`;
       const method = isFollowing ? 'DELETE' : 'POST';
 
       const response = await fetch(url, {
@@ -234,7 +233,7 @@ const NovelDetail = () => {
     } catch (error) {
       console.error('Error toggling follow status:', error);
     }
-  }, [API_URL, post, isFollowing, navigate]);
+  }, [ post, isFollowing, navigate]);
   const handleSeriesChange = useCallback((event) => {
     const newPostId = event.target.value;
     setSelectedPostId(newPostId);
@@ -273,7 +272,6 @@ const NovelDetail = () => {
         <Grid item xs={12} md={3}>
           <AuthorInfo
             author={post.author}
-            API_URL={API_URL}
             isFollowing={isFollowing}
             handleFollowToggle={handleFollowToggle}
           />
@@ -484,7 +482,7 @@ const ActionButtons = memo(({ hasLiked, isInBookshelf, handleGoodClick, handleBo
   </Box>
 ));
 
-const AuthorInfo = memo(({ author, API_URL, isFollowing, handleFollowToggle }) => (
+const AuthorInfo = memo(({ author, isFollowing, handleFollowToggle }) => (
   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
     <Paper
       elevation={3}
@@ -499,7 +497,7 @@ const AuthorInfo = memo(({ author, API_URL, isFollowing, handleFollowToggle }) =
     >
       <RouterLink to={`/user/${author._id}`}>
         <Avatar
-          src={`${API_URL}${author.icon}`}
+          src={`${author.icon}`}
           alt={author.nickname}
           sx={{ width: 100, height: 100, marginBottom: 2 }}
         />

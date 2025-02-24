@@ -136,7 +136,7 @@ mongoose.connect('mongodb://host.docker.internal:27017/novel-site', {
   console.log('MongoDB connected');
 
   //【普段はコメントアウト】mongodbからelasticsearchにデータを移行する
- await migrateDataToElasticsearch();
+// await migrateDataToElasticsearch();
 })
 .catch(err => console.error('MongoDB connection error:', err));
 

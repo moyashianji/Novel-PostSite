@@ -13,8 +13,8 @@ function getEsClient() {
     esClient.ping()
       .then(() => console.log('✅ Elasticsearch is connected!'))
       .catch((error) => {
-        console.error('❌ Elasticsearch connection failed:', error.message);
-        console.error('🔍 詳細:', error);
+      //  console.error('❌ Elasticsearch connection failed:', error.message);
+      // console.error('🔍 詳細:', error);
       });
   }
 

@@ -1,37 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, Link } from '@mui/material';
-import { styled } from '@mui/system';
-import { Link as RouterLink } from 'react-router-dom';
-
-const SeriesCard = styled(Card)(({ theme }) => ({
-  height: 300, // カードの高さを大きく調整
-  minWidth: 300, // カードの幅を大きく調整
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  textAlign: 'left',
-  backgroundColor: theme.palette.background.default,
-  padding: theme.spacing(2),
-  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.15)',
-  transition: 'transform 0.3s, box-shadow 0.3s',
-  borderRadius: theme.shape.borderRadius,
-  marginRight: theme.spacing(3),
-  '&:hover': {
-    transform: 'scale(1.05)',
-    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
-  },
-}));
-
-const SeriesCardContent = styled(CardContent)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  height: '100%',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'normal', // 改行を許可する
-  wordWrap: 'break-word', // 長い単語も適切に改行されるように
-}));
+import { Box, Typography } from '@mui/material';
+import SeriesCard from '../components/series/SeriesCard';
 
 const SeriesCarousel = ({ series }) => {
   const scrollContainerRef = useRef(null);
@@ -78,16 +47,7 @@ const SeriesCarousel = ({ series }) => {
         }}
       >
         {series.map((s) => (
-          <SeriesCard key={s._id}>
-            <SeriesCardContent>
-              <Link component={RouterLink} to={`/series/${s._id}/works`} underline="none">
-                <Typography variant="h6">{s.title}</Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                  {s.description.slice(0, 100)}...
-                </Typography>
-              </Link>
-            </SeriesCardContent>
-          </SeriesCard>
+          <SeriesCard key={s._id} series={s} />
         ))}
       </Box>
     </Box>

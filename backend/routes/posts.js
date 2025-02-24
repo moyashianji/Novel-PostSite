@@ -61,6 +61,7 @@ router.get('/', async (req, res) => {
     // 投稿を取得 (ページネーション対応)
     const posts = await Post.find()
       .populate('author')
+      .populate('series')   // シリーズ情報を取得
       .sort({ createdAt: -1 }) // 新しい投稿から順に取得
       .skip((page - 1) * postsPerPage) // スキップする件数
       .limit(postsPerPage); // 取得する件数を制限
@@ -77,31 +78,46 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: '投稿の取得に失敗しました。' });
   }
 });
+
 router.get('/tag/:tag', async (req, res) => {
   try {
     const { tag } = req.params;
     const page = parseInt(req.query.page) || 1;
     const postsPerPage = 10;  // 1ページに表示する投稿数
 
-    const totalPosts = await Post.countDocuments({ tags: tag });
+    // 🔍 Elasticsearch で該当タグの投稿を検索
+    const esResponse = await esClient.search({
+      index: 'posts',
+      body: {
+        query: {
+          term: { "tags": tag }  // ✅ 完全一致検索
+        },
+        from: (page - 1) * postsPerPage,
+        size: postsPerPage,
+        sort: [{ createdAt: "desc" }]  // ✅ 投稿日時の降順
+      }
+    });
 
-    const posts = await Post.find({ tags: tag })
-      .sort({ createdAt: -1 })  // 新しい順に取得
-      .skip((page - 1) * postsPerPage)
-      .limit(postsPerPage)
-      .populate('author');
+    const totalPosts = esResponse.hits.total.value;
+    const postIds = esResponse.hits.hits.map(hit => hit._id);
+
+    // 🔄 MongoDB から投稿データを取得
+    const posts = await Post.find({ _id: { $in: postIds } })
+      .populate('author')
+      .populate('series');
+
     res.json({
       posts,
       totalPosts,
       totalPages: Math.ceil(totalPosts / postsPerPage),
       currentPage: page,
     });
+
   } catch (error) {
     console.error('Error fetching posts by tag:', error);
     res.status(500).json({ message: 'タグに関連する投稿の取得に失敗しました。' });
   }
 });
-
 // 特定の投稿を取得
 router.get('/:id([0-9a-fA-F]{24})', async (req, res) => {
   try {
@@ -298,12 +314,16 @@ router.get('/search', async (req, res) => {
 
     console.log('[INFO] 検索開始: ', req.query.mustInclude);
 
-    const searchTerm = req.query.query || '';
-    const mustInclude = req.query.mustInclude || '';  // すべて含む
-    const shouldInclude = req.query.shouldInclude || '';  // いずれか含む
-    const mustNotInclude = req.query.mustNotInclude || '';  // 除外する
-    const fields = req.query.fields ? req.query.fields.split(',') : ['title', 'content', 'tags']; // 検索対象
-    const tagSearchType = req.query.tagSearchType || 'partial'; // タグ検索の精度
+    // 🌟 ページネーションのパラメータ
+    const page = parseInt(req.query.page) || 1;  // 1ページ目をデフォルト
+    const size = parseInt(req.query.size) || 10; // 1ページあたり10件 (デフォルト)
+    const from = (page - 1) * size; // スキップする件数
+
+    const mustInclude = req.query.mustInclude || '';
+    const shouldInclude = req.query.shouldInclude || '';
+    const mustNotInclude = req.query.mustNotInclude || '';
+    const fields = req.query.fields ? req.query.fields.split(',') : ['title', 'content', 'tags'];
+    const tagSearchType = req.query.tagSearchType || 'partial';
 
     // 🔍 検索キーワードを分割
     const mustIncludeTerms = mustInclude.split(/\s+/).filter(term => term.trim() !== "");
@@ -320,7 +340,7 @@ router.get('/search', async (req, res) => {
           query: term,
           fields: fields,
           fuzziness: "AUTO",
-          operator: "and" // すべての単語を含む
+          operator: "and"
         }
       }));
     }
@@ -332,7 +352,7 @@ router.get('/search', async (req, res) => {
           query: term,
           fields: fields,
           fuzziness: "AUTO",
-          operator: "or" // どれか1つを含む
+          operator: "or"
         }
       }));
     }
@@ -351,36 +371,43 @@ router.get('/search', async (req, res) => {
     // 🔍 Elasticsearch 検索実行
     const response = await esClient.search({
       index: 'posts',
-      body: { query },
-      highlight: {  // ハイライト表示
-        fields: {
-          title: {},
-          content: {}
+      body: {
+        query,
+        from: from, // ✅ ページネーション
+        size: size, // ✅ 取得件数
+        highlight: {  
+          fields: {
+            title: {},
+            content: {}
+          }
         }
       }
     });
 
     const postIds = response.hits.hits.map(hit => hit._id);
+    const totalHits = response.hits.total.value; // 全件数を取得
 
     console.log(`[INFO] Elasticsearch から取得した _id の数: ${postIds.length}`);
 
     if (postIds.length === 0) {
-      return res.json([]);
+      return res.json({ posts: [], total: 0, page, size });
     }
 
     // 🔄 MongoDB からデータを取得
     const posts = await Post.find({ _id: { $in: postIds } })
       .populate('author')
+      .populate('series')   // シリーズ情報を取得
       .lean();
 
     console.log(`✅ MongoDB から取得したデータ数: ${posts.length}`);
 
-    res.json(posts);
+    res.json({ posts, total: totalHits, page, size });
   } catch (error) {
     console.error('❌ 検索エンドポイントでのエラー:', error);
     res.status(500).json({ message: '検索結果の取得に失敗しました。' });
   }
 });
+
 
 // いいねした作品リストを取得するエンドポイント
 router.get('/user/liked', authenticateToken, async (req, res) => {

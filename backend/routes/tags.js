@@ -10,27 +10,36 @@ const authenticateToken = require('../middlewares/authenticateToken');
 const router = express.Router();
 const tagCache = new NodeCache({ stdTTL: 3600 }); // キャッシュの有効期間を1時間に設定
 
+const { getEsClient } = require('../utils/esClient');
+const esClient = getEsClient();
 
-// 人気タグの集計とキャッシュ
 router.get('/tags/popular', async (req, res) => {
   try {
-    // キャッシュから取得
-    let tags = tagCache.get('popularTags');
-    if (!tags) {
-      // キャッシュにない場合はデータベースから集計
-      const result = await Post.aggregate([
-        { $unwind: "$tags" },
-        { $group: { _id: "$tags", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 20 }
-      ]);
+    const response = await esClient.search({
+      index: 'posts',
+      body: {
+        size: 0, // 検索結果は不要
+        aggs: {
+          popular_tags: {
+            terms: {
+              field: "tags", // ✅ `keyword` を削除
+              size: 20 // 人気タグトップ10
+            }
+          }
+        }
+      }
+    });
 
-      tags = result.map(tag => tag._id);
-      tagCache.set('popularTags', tags); // 結果をキャッシュに保存
-    }
-
+    // 人気タグリストを作成
+    const tags = response.aggregations.popular_tags.buckets.map(bucket => ({
+      tag: bucket.key,
+      count: bucket.doc_count
+    }));
+    
+    console.log("人気タグ取得成功:", tags);
     res.json(tags);
   } catch (error) {
+    console.error('❌ 人気タグ取得エラー:', error);
     res.status(500).json({ message: '人気タグの取得に失敗しました。' });
   }
 });
