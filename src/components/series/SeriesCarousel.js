@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
-import SeriesCard from '../components/series/SeriesCard';
+import SeriesCard from './SeriesCard';
 
 const SeriesCarousel = ({ series }) => {
   const scrollContainerRef = useRef(null);

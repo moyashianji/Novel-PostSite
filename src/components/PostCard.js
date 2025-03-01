@@ -91,6 +91,7 @@ const PostTags = React.memo(({ tags }) => {
           label={tag}
           sx={{ marginRight: 0.5, marginBottom: 0.5 }}
           onClick={() => handleTagClick(tag)}
+          color="primary"
         />
       ))}
     </Box>

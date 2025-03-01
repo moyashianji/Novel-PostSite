@@ -1,7 +1,9 @@
 // utils/elasticsearch.js
-const esClient = require('./esClient');
+const getEsClient = require('./esClient');
 const Post = require('../models/Post');
+const Series = require('../models/Series');
 const sanitizeHtml = require('sanitize-html'); // インストールが必要
+const esClient = getEsClient();
 
 async function migrateDataToElasticsearch() {
     try {
@@ -73,4 +75,6 @@ async function migrateDataToElasticsearch() {
     }
   }
   
+
+
   module.exports = { migrateDataToElasticsearch };

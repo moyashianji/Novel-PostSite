@@ -4,7 +4,6 @@ const { getEsClient } = require('../utils/esClient'); // 動的に取得
 const sanitizeHtml = require('sanitize-html'); // HTMLタグを削除するライブラリ
 
 const esClient = getEsClient(); // getEsClient() で取得
-console.log('🔍 Elasticsearch Client:', esClient);
 
 const replySchema = new mongoose.Schema({
   text: String,

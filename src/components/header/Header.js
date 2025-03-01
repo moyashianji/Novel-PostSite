@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, IconButton, Badge } from '@mui/material';
 import { Link } from 'react-router-dom';
-import SearchBar from '../search/SearchBar';
+import SearchBar from './SearchBar';
 import Logo from './Logo';
 import AuthButtons from './AuthButtons';
 

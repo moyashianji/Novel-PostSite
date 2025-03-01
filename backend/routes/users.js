@@ -228,7 +228,7 @@ router.get('/following', authenticateToken, async (req, res) => {
 router.get('/:id([0-9a-fA-F]{24})/series', async (req, res) => {
   try {
     const userId = req.params.id;
-    const series = await Series.find({ author: userId });
+    const series = await Series.find({ author: userId }).populate('author');
 
     if (!series) {
       return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });

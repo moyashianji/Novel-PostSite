@@ -4,7 +4,7 @@ import { Typography, Box, Button, Avatar, Grid, Chip, Link } from '@mui/material
 import { styled } from '@mui/system';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
-import SeriesCarousel from '../components/SeriesCarousel'; // 新しいコンポーネントをインポート
+import SeriesCarousel from '../components/series/SeriesCarousel'; // 新しいコンポーネントをインポート
 
 const UserCard = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4),
@@ -60,16 +60,15 @@ const UserPage = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const navigate = useNavigate();
-  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/users/${id}`);
+        const response = await fetch(`/api/users/${id}`);
         const data = await response.json();
         setUser(data);
         setFollowerCount(data.followerCount);
-        const followStatusResponse = await fetch(`${API_URL}/api/users/${id}/is-following`, {
+        const followStatusResponse = await fetch(`/api/users/${id}/is-following`, {
           credentials: 'include',  // クッキーを含めてリクエストを送信
         });
         const followStatus = await followStatusResponse.json();
@@ -81,7 +80,7 @@ const UserPage = () => {
 
     const fetchWorks = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/users/${id}/works`);
+        const response = await fetch(`/api/users/${id}/works`);
         const data = await response.json();
         setWorks(data);
         setFilteredWorks(data);
@@ -92,7 +91,7 @@ const UserPage = () => {
 
     const fetchSeries = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/users/${id}/series`);
+        const response = await fetch(`/api/users/${id}/series`);
         const data = await response.json();
         setSeries(data);
       } catch (error) {
@@ -122,8 +121,8 @@ const UserPage = () => {
     try {
 
       const url = isFollowing
-        ? `${API_URL}/api/users/unfollow/${id}`
-        : `${API_URL}/api/users/follow/${id}`;
+        ? `/api/users/unfollow/${id}`
+        : `/api/users/follow/${id}`;
       const method = isFollowing ? 'DELETE' : 'POST';
 
       const response = await fetch(url, {
@@ -139,7 +138,7 @@ const UserPage = () => {
       if (response.ok) {
         setIsFollowing(!isFollowing);
 
-        const response = await fetch(`${API_URL}/api/users/${id}`);
+        const response = await fetch(`/api/users/${id}`);
         const data = await response.json();
         setFollowerCount(data.followerCount);
 
@@ -157,7 +156,7 @@ const UserPage = () => {
     <Box sx={{ maxWidth: 1200, margin: 'auto', paddingTop: 4 }}>
       <UserCard>
         <Box display="flex" alignItems="center">
-          <Avatar src={`${API_URL}${user.icon}`} alt={user.nickname} sx={{ width: 100, height: 100, marginRight: 2 }} />
+          <Avatar src={`${user.icon}`} alt={user.nickname} sx={{ width: 100, height: 100, marginRight: 2 }} />
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{user.nickname}</Typography>
             <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
