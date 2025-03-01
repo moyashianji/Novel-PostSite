@@ -248,7 +248,7 @@ const CommentSection = ({ postId }) => {
         setCharCount={setCharCount}
         handleCommentSubmit={handleCommentSubmit}
       />
-      {comments.map((comment) => (
+      {comments && comments.map((comment) => (
         <Comment
           key={comment._id}
           comment={comment}

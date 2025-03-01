@@ -1,4 +1,3 @@
-const getEsClient= require('./esClient'); // ✅ ここで `esClient.bulk` が使えるはず
 const Series = require('../models/Series');
 const sanitizeHtml = require('sanitize-html');
 const { getEsClient } = require('../utils/esClient');

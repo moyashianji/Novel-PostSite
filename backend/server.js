@@ -28,6 +28,7 @@ const tagRoutes = require('./routes/tags');
 const viewanalytics = require('./routes/analytics');
 const contestRoutes = require('./routes/contests');
 const uploadRoutes = require('./routes/uploadRoutes');
+const searchRoutes = require('./routes/search');
 
 const app = express();
 app.disable("x-powered-by");
@@ -132,6 +133,8 @@ app.use('/api', tagRoutes);
 app.use('/api', viewanalytics);
 app.use('/api/contests', contestRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/search', searchRoutes);
+
 
 // ✅ エラーハンドリング（統一）
 app.use((err, req, res, next) => {

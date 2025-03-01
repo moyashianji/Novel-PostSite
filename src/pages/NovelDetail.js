@@ -495,14 +495,16 @@ const AuthorInfo = memo(({ author, isFollowing, handleFollowToggle }) => (
         justifyContent: 'center',
       }}
     >
-      <RouterLink to={`/user/${author._id}`}>
-        <Avatar
-          src={`${author.icon}`}
-          alt={author.nickname}
-          sx={{ width: 100, height: 100, marginBottom: 2 }}
-        />
-      </RouterLink>
-      <Typography variant="h6">{author.nickname}</Typography>
+      {author && (
+        <RouterLink to={`/user/${author._id}`}>
+          <Avatar
+            src={`${author.icon}`}
+            alt={author.nickname}
+            sx={{ width: 100, height: 100, marginBottom: 2 }}
+          />
+        </RouterLink>
+      )}
+      {author && <Typography variant="h6">{author.nickname}</Typography>}
       <Button
         variant={isFollowing ? 'contained' : 'outlined'}
         color="primary"

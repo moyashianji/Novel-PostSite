@@ -1,4 +1,3 @@
-// src/components/search/SearchFilters.js
 import React, { useCallback } from "react";
 import {
     TextField,
@@ -10,7 +9,7 @@ import {
     Button,
 } from "@mui/material";
 import { useSearch } from "../../context/SearchContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const KeywordFilter = React.memo(({ label, value, onChange }) => (
     <TextField
@@ -40,15 +39,53 @@ const RadioFilter = React.memo(({ label, value, options, onChange }) => (
 
 const SearchFilters = () => {
     const { searchParams, setSearchParams, handleSearch } = useSearch();
+    const location = useLocation();
     const navigate = useNavigate();
 
+    const query = new URLSearchParams(location.search);
+    const type = query.get("type") || "posts"; // 🔹 URLから `type` を取得
+
     const handleInputChange = useCallback((field, value) => {
-        setSearchParams((prev) => ({ ...prev, [field]: value }));
+        setSearchParams((prev) => ({
+            ...prev,
+            [field]: field === "fields" ? value.split(",") : value,
+        }));
+        console.log(`✅ ${field} が更新:`, value);
     }, [setSearchParams]);
 
     const handleSearchClick = useCallback(() => {
-        handleSearch(searchParams);
-    }, [handleSearch, searchParams]);
+        const updatedQuery = new URLSearchParams(location.search);
+    
+        Object.keys(searchParams).forEach((key) => {
+            if (searchParams[key]) {
+                updatedQuery.set(
+                    key,
+                    Array.isArray(searchParams[key]) ? searchParams[key].join(",") : searchParams[key]
+                );
+            }
+        });
+
+        // 🔹 type パラメータを維持
+        updatedQuery.set("type", type);
+
+        console.log("🔍 更新された検索クエリ:", updatedQuery.toString());
+        navigate(`/search?${updatedQuery.toString()}`);
+    }, [searchParams, type, setSearchParams, navigate, location.search]);
+
+    // 🔹 `posts` と `series` で検索フィールドを切り替え
+    const fieldsOptions = type === "series"
+        ? [
+            { value: "title,description,tags", label: "タイトル・説明・タグ" },
+            { value: "title", label: "タイトル" },
+            { value: "description", label: "説明" },
+            { value: "tags", label: "タグ" },
+        ]
+        : [
+            { value: "title,content,tags", label: "タイトル・本文・タグ" },
+            { value: "title", label: "タイトル" },
+            { value: "content", label: "本文" },
+            { value: "tags", label: "タグ" },
+        ];
 
     return (
         <FormControl component="fieldset" sx={{ mb: 3, p: 2, border: "1px solid #ccc", borderRadius: "8px" }}>
@@ -73,13 +110,8 @@ const SearchFilters = () => {
             <RadioFilter
                 label="検索対象"
                 value={searchParams.fields.join(",")}
-                options={[
-                    { value: "title,content,tags", label: "タイトル・全本文・タグ" },
-                    { value: "title", label: "タイトル" },
-                    { value: "content", label: "全本文" },
-                    { value: "tags", label: "タグ" },
-                ]}
-                onChange={(e) => handleInputChange("fields", e.target.value.split(","))}
+                options={fieldsOptions}
+                onChange={(e) => handleInputChange("fields", e.target.value)}
             />
 
             <RadioFilter
