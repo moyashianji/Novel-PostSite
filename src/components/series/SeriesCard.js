@@ -84,7 +84,7 @@ const SeriesTags = React.memo(({ tags }) => {
   }
 
   const handleTagClick = (tag) => {
-    navigate(`/search?mustInclude=${encodeURIComponent(tag)}`);
+    navigate(`/search?mustInclude=${encodeURIComponent(tag)}&type=series`);
   };
 
   return (

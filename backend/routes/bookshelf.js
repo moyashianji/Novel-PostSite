@@ -88,7 +88,7 @@ router.post('/me/bookmark', authenticateToken, async (req, res) => {
   try {
     const userId = req.user._id; // 認証されたユーザーのID
     const { novelId, position } = req.body;
-
+    console.log(req.body)
     // ユーザーを取得
     const user = await User.findById(userId);
     if (!user) {
@@ -96,7 +96,7 @@ router.post('/me/bookmark', authenticateToken, async (req, res) => {
     }
 
     // 既存のしおりを検索
-    const existingBookmark = user.bookmarks.find(bookmark => bookmark.novelId.toString() === novelId);
+    const existingBookmark = user.bookmarks.find(bookmark => bookmark.novelId && bookmark.novelId.toString() === novelId);
 
     if (existingBookmark) {
       // 既存のしおりを更新
