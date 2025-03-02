@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import PostCard from '../components/PostCard';
+import PostCard from '../components/post/PostCard.js';
 import PVRanking from '../components/PVRanking.js';
 import { Box, Typography, Grid, Card, Pagination, Button, TextField, IconButton, Paper, CardContent, CardMedia } from '@mui/material';
 import PopularTags from '../components/ranking/PopularTags.js';

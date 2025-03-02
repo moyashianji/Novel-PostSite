@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import DOMPurify from 'dompurify';
-import PostCard from '../../components/PostCard';
+import PostCard from '../../components/post/PostCard';
 import {
   Box,
   Typography,

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import { Box } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Footer from '../footer/Footer';
-import Header from '../header/Header';
+import Footer from './footer/Footer';
+import Header from './header/Header';
 import { SearchContext } from "../../context/SearchContext";
 
 const Layout = ({ children, auth, setAuth }) => {

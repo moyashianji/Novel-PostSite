@@ -22,7 +22,7 @@ import AnalytisPage from './pages/AnalytisPage';
 import ContestList from './pages/contests/ContestList';
 import ContestDetail from './pages/contests/ContestDetail';
 import ContestEntry from './pages/contests/ContestEntry';
-import ContestCreate from './pages/contests/ContestCreate';
+import ContestCreate from './pages/contests/ContestCreatePage';
 import ContestPreview from './pages/contests/ContestPreview';
 import ContestEdit from './pages/contests/ContestEdit';
 

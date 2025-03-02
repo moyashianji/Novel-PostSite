@@ -21,7 +21,7 @@ import {
 import 'react-quill/dist/quill.snow.css';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CustomEditor from '../../components/CustomEditor';
+import CustomEditor from '../../components/wysiwyg/CustomEditor';
 
 const ContestEdit = () => {
   const { id } = useParams();

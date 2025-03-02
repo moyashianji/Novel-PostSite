@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Grid, Box } from '@mui/material';
-import ProfileInfo from '../components/ProfileInfo';
+import ProfileInfo from '../components/profile/ProfileInfo';
 import Sidebar from '../components/mypage/Sidebar';
 import ContentSection from '../components/mypage/ContentSection';
 import { useAPI } from '../hooks/useAPI';

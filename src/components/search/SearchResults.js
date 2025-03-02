@@ -4,7 +4,7 @@ import {
   Container, Grid, Typography, CircularProgress, 
   Box, Pagination, Tabs, Tab 
 } from "@mui/material";
-import PostCard from "../../components/PostCard";
+import PostCard from "../post/PostCard";
 import SeriesCard from "../../components/series/SeriesCard";
 
 const SearchResults = () => {
