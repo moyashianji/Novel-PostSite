@@ -25,7 +25,7 @@ import ContestEntry from './pages/contests/ContestEntry';
 import ContestCreate from './pages/contests/ContestCreatePage';
 import ContestPreview from './pages/contests/ContestPreview';
 import ContestEdit from './pages/contests/ContestEdit';
-
+import SiteMap from './components/layout/footer/SiteMap';
 const theme = createTheme();
 
 function App() {
@@ -106,6 +106,7 @@ function App() {
             <Route path="/contests/create" element={<ContestCreate />} />;
             <Route path="/contest-preview" element={<ContestPreview />} />
             <Route path="/contest-edit/:id" element={<ContestEdit />} />
+            <Route path="/sitemap" element={<SiteMap />} />
 
           </Routes>
         </Layout>

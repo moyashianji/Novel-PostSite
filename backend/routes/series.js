@@ -14,35 +14,74 @@ router.get('/:id([0-9a-fA-F]{24})/works', async (req, res) => {
   try {
     const seriesId = req.params.id;
 
-    // シリーズを取得し、その中の投稿をpopulateして取得
-    const series = await Series.findById(seriesId).populate('posts.postId');
+    // シリーズを取得し、投稿とその作者情報を完全にpopulateして取得
+    const series = await Series.findById(seriesId)
+      .populate({
+        path: 'posts.postId',
+        populate: {
+          path: 'author',
+          select: '_id nickname icon' // 作者の必要な情報のみを選択
+        }
+      })
+      .populate('author', '_id nickname icon'); // シリーズの作者情報も取得
 
     if (!series) {
       console.log('Series not found:', seriesId);
       return res.status(404).json({ message: 'シリーズが見つかりませんでした。' });
     }
 
-    console.log('Series found:', series);
+    console.log('Series found:', series.title);
+
+    // シリーズ情報をレスポンスに含める
+    const seriesInfo = {
+      _id: series._id,
+      title: series.title,
+      description: series.description,
+      tags: series.tags,
+      isOriginal: series.isOriginal,
+      isAdultContent: series.isAdultContent,
+      aiGenerated: series.aiGenerated,
+      author: series.author, // 作者情報
+      createdAt: series.createdAt
+    };
 
     // シリーズ内の投稿情報を取得して整理
     const works = series.posts
       .filter(post => {
         const hasPostId = !!post.postId;
-        console.log(`Processing post: ${post._id}, hasPostId: ${hasPostId}`);
-        return hasPostId;  // postIdが存在するか確認
+        return hasPostId; // postIdが存在するか確認
       })
-      .map(post => ({
-        _id: post.postId._id,
-        title: post.postId.title,
-        description: post.postId.description,
-        episodeNumber: post.episodeNumber,
-      }));
+      .map(post => {
+        const postData = post.postId;
+        return {
+          _id: postData._id,
+          title: postData.title,
+          description: postData.description,
+          content: postData.content?.substring(0, 150), // 内容の一部（最初の150文字）
+          wordCount: postData.wordCount,
+          episodeNumber: post.episodeNumber,
+          author: postData.author, // 作者情報
+          tags: postData.tags,
+          createdAt: postData.createdAt,
+          updatedAt: postData.updatedAt,
+          viewCounter: postData.viewCounter,
+          goodCounter: postData.goodCounter,
+          isAdultContent: postData.isAdultContent,
+          isOriginal: postData.isOriginal,
+          aiEvidence: postData.aiEvidence
+        };
+      });
 
-    console.log('Works in series:', works);
-    res.status(200).json(works);
+    console.log(`Found ${works.length} works in series`);
+    
+    // シリーズ情報と作品一覧を含む完全なレスポンス
+    res.status(200).json({
+      series: seriesInfo,
+      works: works
+    });
   } catch (error) {
     console.error('Error fetching works in series:', error);
-    res.status(500).json({ message: '作品一覧の取得に失敗しました。', error });
+    res.status(500).json({ message: '作品一覧の取得に失敗しました。', error: error.message });
   }
 });
 // シリーズの詳細情報を取得するエンドポイント

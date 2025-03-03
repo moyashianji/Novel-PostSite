@@ -35,6 +35,7 @@ router.get('/', async (req, res) => {
         const mustNotInclude = req.query.mustNotInclude || '';
         const tagSearchType = req.query.tagSearchType || 'partial';
         const tags = req.query.tags ? req.query.tags.split(',') : [];
+        const aiTool = req.query.aiTool || ''; // AIツールパラメータを追加
 
         console.log('[INFO] 🔎 検索条件:');
         console.log(`      ✅ mustInclude: ${mustInclude}`);
@@ -42,6 +43,7 @@ router.get('/', async (req, res) => {
         console.log(`      ✅ mustNotInclude: ${mustNotInclude}`);
         console.log(`      ✅ tags: ${tags}`);
         console.log(`      ✅ tagSearchType: ${tagSearchType}`);
+        console.log(`      ✅ aiTool: ${aiTool}`); // AIツールログ追加
 
         // 🔹 fields の取得とデバッグ強化
         let fields = [];
@@ -113,6 +115,15 @@ router.get('/', async (req, res) => {
             }
         }
 
+        // AIツールでの検索を追加
+        if (aiTool) {
+            query.bool.filter.push({
+                term: {
+                    "aiEvidence.tools": aiTool
+                }
+            });
+        }
+
         console.log('[INFO] 🔍 Elasticsearch 検索クエリ:', JSON.stringify(query, null, 2));
 
         // 🔍 Elasticsearch 検索実行
@@ -128,7 +139,8 @@ router.get('/', async (req, res) => {
                 highlight: {
                     fields: {
                         title: {},
-                        description: {}
+                        description: {},
+                        content: {}
                     }
                 }
             }
@@ -161,14 +173,23 @@ router.get('/', async (req, res) => {
                 .lean();
         }
 
+        // 検索結果をElasticsearchの順序と合わせる
+        results = docIds.map(id => results.find(doc => doc._id.toString() === id)).filter(Boolean);
+
         console.log(`[INFO] ✅ MongoDB から取得したデータ数: ${results.length}`);
 
-        res.json({ results, total: totalHits, page, size });
+        res.json({ 
+            results, 
+            total: totalHits, 
+            page, 
+            size,
+            hasMore: from + results.length < totalHits
+        });
         console.log('\n🔍 ================== 検索リクエスト完了 ==================\n');
 
     } catch (error) {
         console.error('❌ 検索エンドポイントでのエラー:', error);
-        res.status(500).json({ message: '検索結果の取得に失敗しました。' });
+        res.status(500).json({ message: '検索結果の取得に失敗しました。', error: error.message });
     }
 });
 

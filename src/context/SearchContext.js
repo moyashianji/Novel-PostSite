@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback, memo } from "react";
+import React, { createContext, useState, useContext, useCallback, memo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 // Contextの作成
@@ -8,38 +8,83 @@ export const SearchProvider = memo(({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // 🔹 現在のURLから `type` を取得（デフォルトは `posts`）
-    const urlParams = new URLSearchParams(location.search);
-    const defaultType = urlParams.get("type") || "posts";
+    // URLパラメータから初期値を取得する関数
+    const getInitialParamsFromUrl = useCallback(() => {
+        const urlParams = new URLSearchParams(location.search);
+        const type = urlParams.get("type") || "posts";
+        
+        return {
+            mustInclude: urlParams.get("mustInclude") || "",
+            shouldInclude: urlParams.get("shouldInclude") || "",
+            mustNotInclude: urlParams.get("mustNotInclude") || "",
+            fields: urlParams.get("fields") 
+                ? urlParams.get("fields").split(",") 
+                : type === "series" 
+                    ? ["title", "description", "tags"] 
+                    : ["title", "content", "tags"],
+            tagSearchType: urlParams.get("tagSearchType") || "partial",
+            type: type,
+            aiTool: urlParams.get("aiTool") || "", // AIツール検索パラメータを追加
+            page: urlParams.get("page") || "1",
+            size: urlParams.get("size") || "10",
+        };
+    }, [location.search]);
 
-    // 検索パラメータの状態管理
-    const [searchParams, setSearchParams] = useState({
-        mustInclude: "",
-        shouldInclude: "",
-        mustNotInclude: "",
-        fields: defaultType === "series" ? ["title", "description", "tags"] : ["title", "content", "tags"],
-        tagSearchType: "partial",
-        type: defaultType, // 🔹 `type` を保持
-    });
+    // 状態の初期化
+    const [searchParams, setSearchParams] = useState(getInitialParamsFromUrl());
 
-    // 🔍 検索関数
+    // URLが変更されたら検索パラメータを更新
+    useEffect(() => {
+        setSearchParams(getInitialParamsFromUrl());
+    }, [location.search, getInitialParamsFromUrl]);
+
+    // 検索実行関数
     const handleSearch = useCallback((params) => {
         const updatedParams = { ...searchParams, ...params };
+        
+        // 検索パラメータの状態を更新
         setSearchParams(updatedParams);
 
+        // URLクエリパラメータの構築
         const query = new URLSearchParams();
         Object.keys(updatedParams).forEach((key) => {
             if (updatedParams[key]) {
-                query.set(key, updatedParams[key]);
+                const value = Array.isArray(updatedParams[key]) 
+                    ? updatedParams[key].join(",") 
+                    : updatedParams[key];
+                query.set(key, value);
             }
         });
 
+        // 検索ページに遷移
+        navigate(`/search?${query.toString()}`);
+    }, [searchParams, navigate]);
 
+    // パラメータクリア関数
+    const clearSearchParams = useCallback(() => {
+        const clearedParams = {
+            ...searchParams,
+            mustInclude: "",
+            shouldInclude: "",
+            mustNotInclude: "",
+            aiTool: "",
+            page: "1",
+        };
+        setSearchParams(clearedParams);
+        
+        // typeだけ残して他をクリアしたURLに遷移
+        const query = new URLSearchParams();
+        query.set("type", clearedParams.type);
         navigate(`/search?${query.toString()}`);
     }, [searchParams, navigate]);
 
     return (
-        <SearchContext.Provider value={{ searchParams, setSearchParams, handleSearch }}>
+        <SearchContext.Provider value={{ 
+            searchParams, 
+            setSearchParams, 
+            handleSearch,
+            clearSearchParams 
+        }}>
             {children}
         </SearchContext.Provider>
     );

@@ -1,8 +1,28 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box } from '@mui/material';
+import { 
+  Card, 
+  CardContent, 
+  Typography, 
+  Box, 
+  Paper, 
+  IconButton, 
+  Tooltip, 
+  Divider,
+  Button,
+  Grid,
+  Avatar,
+  Chip
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import LinearProgress from '@mui/material/LinearProgress';
 
-const BookmarksList = ({ bookmarks = [] }) => {
+const BookmarksList = ({ bookmarks = [], onDelete }) => {
   const navigate = useNavigate();
 
   const handleBookmarkClick = (novelId, position) => {
@@ -10,31 +30,267 @@ const BookmarksList = ({ bookmarks = [] }) => {
       navigate(`/novel/${novelId}`, { state: { scrollTo: position } });
     }
   };
+  
+  // Format date to be more readable
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    
+    // If less than 24 hours, show relative time
+    if (diff < 86400000) { // 24 hours in milliseconds
+      const hours = Math.floor(diff / 3600000);
+      if (hours < 1) {
+        const minutes = Math.floor(diff / 60000);
+        return `${minutes}分前`;
+      }
+      return `${hours}時間前`;
+    }
+    
+    // If less than 7 days, show day of week and time
+    if (diff < 604800000) { // 7 days in milliseconds
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      const dayOfWeek = weekdays[date.getDay()];
+      return `${dayOfWeek}曜日 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+    
+    // Otherwise show date in format: YYYY年MM月DD日
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  };
+  
+  // Format position in a more human-readable way
+  const formatPosition = (position, totalLength = 100) => {
+    if (!position) return '位置不明';
+    
+    // Calculate percentage through the novel
+    const percentage = Math.round((position / totalLength) * 100);
+    
+    // Estimate chapter based on position (this is a placeholder logic)
+    // In a real app, you would have real chapter data
+    const estimatedChapter = Math.ceil(position / 20);
+    
+    return `position:${position}`;
+  };
+  
+  // Handle delete with stopPropagation to prevent navigation
+  const handleDelete = (e, bookmarkId) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(bookmarkId);
+    }
+  };
 
   if (bookmarks.length === 0) {
     return (
-      <Box sx={{ padding: 2, width: '100%', textAlign: 'center' }}>
-        <Typography>しおりはありません</Typography>
-      </Box>
+      <Paper 
+        elevation={0} 
+        variant="outlined"
+        sx={{ 
+          padding: 4, 
+          width: '100%', 
+          textAlign: 'center',
+          borderRadius: 2,
+          backgroundColor: 'rgba(0,0,0,0.01)',
+          borderStyle: 'dashed'
+        }}
+      >
+        <BookmarkIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2, opacity: 0.6 }} />
+        <Typography variant="h6" color="text.secondary" gutterBottom>しおりはありません</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, mx: 'auto', mb: 3 }}>
+          小説を読みながらしおりを追加すると、ここに表示されます。読書の途中で中断してもすぐに再開できます。
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={() => navigate('/novels')}
+          startIcon={<MenuBookIcon />}
+          sx={{ borderRadius: 6, px: 3 }}
+        >
+          小説を探す
+        </Button>
+      </Paper>
     );
   }
 
   return (
     <Box sx={{ width: '100%' }}>
-      {bookmarks.map((bookmark, index) => (
-        <Card
-          key={index}
-          sx={{ marginBottom: 2, width: '100%', cursor: 'pointer' }}
-          onClick={() => bookmark.novelId && handleBookmarkClick(bookmark.novelId._id, bookmark.position)}
-        >
-          <CardContent>
-            <Typography variant="subtitle1">{bookmark.novelId?.title || 'Unknown Title'}</Typography>
-            <Typography variant="body2" color="textSecondary">
-              位置: {bookmark.position} | 日時: {new Date(bookmark.date).toLocaleString()}
-            </Typography>
-          </CardContent>
-        </Card>
-      ))}
+      {bookmarks.map((bookmark, index) => {
+        // Get novel information safely
+        const novel = bookmark.novelId || {};
+        const novelTitle = novel.title || '不明な作品';
+        const novelId = novel._id;
+        const novelCover = novel.coverImage; // Assuming there might be a cover image
+        // Create a simple excerpt if available
+        const excerpt = novel.excerpt || "続きを読む...";
+        // For demo: assume totalLength is 100 or use a property if available
+        const totalLength = novel.totalLength || 100;
+        
+        return (
+          <Card
+            key={index}
+            elevation={1}
+            sx={{ 
+              marginBottom: 2, 
+              width: '100%', 
+              cursor: 'pointer',
+              borderRadius: 2,
+              transition: 'all 0.2s ease-in-out',
+              position: 'relative',
+              overflow: 'visible',
+              '&:hover': {
+                transform: 'translateY(-3px)',
+                boxShadow: 3,
+                '& .arrow-icon': {
+                  opacity: 1,
+                  transform: 'translateX(0)',
+                }
+              } 
+            }}
+            onClick={() => novelId && handleBookmarkClick(novelId, bookmark.position)}
+          >
+            {/* Arrow indicator for navigation */}
+            <ArrowForwardIosIcon 
+              className="arrow-icon"
+              sx={{ 
+                position: 'absolute',
+                right: 16,
+                top: '50%',
+                transform: 'translateY(-50%) translateX(10px)',
+                opacity: 0,
+                transition: 'all 0.3s ease',
+                color: 'primary.main',
+                fontSize: 18
+              }} 
+            />
+            
+            <CardContent sx={{ p: 0 }}>
+              <Grid container>
+                {/* Left side - Book Cover (if available) */}
+                {novelCover && (
+                  <Grid item xs={2} sm={1}>
+                    <Box 
+                      sx={{ 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 1
+                      }}
+                    >
+                      <Avatar 
+                        variant="rounded" 
+                        src={novelCover} 
+                        alt={novelTitle}
+                        sx={{ width: 48, height: 64, boxShadow: 1 }}
+                      >
+                        <MenuBookIcon />
+                      </Avatar>
+                    </Box>
+                  </Grid>
+                )}
+                
+                {/* Main Content */}
+                <Grid item xs={novelCover ? 10 : 12} sm={novelCover ? 11 : 12}>
+                  <Box sx={{ p: 2 }}>
+                    {/* Bookmark icon and title */}
+                    <Box display="flex" alignItems="flex-start" justifyContent="space-between">
+                      <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
+                        <BookmarkIcon 
+                          color="primary" 
+                          sx={{ mr: 1, fontSize: 20, opacity: 0.8 }}
+                        />
+                        <Typography 
+                          variant="h6" 
+                          sx={{ 
+                            fontWeight: 'bold',
+                            lineHeight: 1.3
+                          }}
+                        >
+                          {novelTitle}
+                        </Typography>
+                      </Box>
+                      
+                      {/* Delete button */}
+                      {onDelete && (
+                        <Tooltip title="しおりを削除">
+                          <IconButton 
+                            size="small" 
+                            onClick={(e) => handleDelete(e, bookmark._id)}
+                            sx={{ 
+                              color: 'text.secondary',
+                              '&:hover': { color: 'error.main' } 
+                            }}
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
+                    
+                    {/* Progress bar */}
+                    <Box sx={{ mb: 1.5 }}>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={(bookmark.position / totalLength) * 100} 
+                        sx={{ 
+                          height: 6, 
+                          borderRadius: 3,
+                          bgcolor: 'rgba(0,0,0,0.05)',
+                          mb: 1
+                        }}
+                      />
+                      
+                      <Box display="flex" justifyContent="space-between">
+                        <Tooltip title="読書の進捗状況">
+                          <Chip
+                            size="small"
+                            label={formatPosition(bookmark.position, totalLength)}
+                            sx={{ 
+                              height: 24,
+                              bgcolor: 'primary.main',
+                              color: 'white',
+                              fontWeight: 'medium',
+                              '& .MuiChip-label': { px: 1 }
+                            }}
+                          />
+                        </Tooltip>
+                        
+                        <Tooltip title="しおりを追加した日時">
+                          <Box display="flex" alignItems="center">
+                            <AccessTimeIcon 
+                              sx={{ fontSize: 14, color: 'text.secondary', mr: 0.5 }} 
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDate(bookmark.date)}
+                            </Typography>
+                          </Box>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                    
+                    {/* Excerpt from the text - only show if available */}
+                    {excerpt && (
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{
+                          fontStyle: 'italic',
+                          bgcolor: 'rgba(0,0,0,0.02)',
+                          p: 1.5,
+                          borderRadius: 1,
+                          borderLeft: '3px solid',
+                          borderColor: 'primary.light'
+                        }}
+                      >
+                        {excerpt}
+                      </Typography>
+                    )}
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        );
+      })}
     </Box>
   );
 };

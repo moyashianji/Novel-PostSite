@@ -17,7 +17,12 @@ const commentSchema = new mongoose.Schema({
   replies: [replySchema],
   createdAt: { type: Date, default: Date.now }
 });
-
+// AI証拠データのスキーマ
+const aiEvidenceSchema = new mongoose.Schema({
+  tools: [{ type: String }], // 使用したAIツールのリスト
+  url: { type: String }, // 証拠URL（任意）
+  description: { type: String, required: true } // AI使用の説明（必須）
+});
 const postSchema = new mongoose.Schema({
   title: { type: String, required: true },
   content: { type: String, required: true },
@@ -25,6 +30,8 @@ const postSchema = new mongoose.Schema({
   tags: [{ type: String, maxlength: 50 }],
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   images: [{ type: String }],
+  imageCount: { type: Number, default: 0 }, // 画像数
+
   wordCount: { type: Number, required: true },
   isOriginal: {
     type: Boolean,
@@ -34,20 +41,29 @@ const postSchema = new mongoose.Schema({
     type: Boolean,
     required: false,
   },
-  isAI: { type: Boolean, required: false },
+  isAI: { type: Boolean, default: true, required: true  },
+  aiEvidence: { type: aiEvidenceSchema, required: true }, // AI証拠
+  // 表示設定
+  isPublic: { type: Boolean, default: true }, // 公開/非公開設定
+  allowComments: { type: Boolean, default: true }, // コメント許可/禁止設定
+  
   viewCounter: { type: Number, default: 0 }, // 閲覧数
   goodCounter: { type: Number, default: 0 }, // いいね数
-  comments: [commentSchema],  // コメントを含む
-  createdAt: { type: Date, default: Date.now },
   bookShelfCounter: { type: Number, default: 0 }, // 本棚追加数
+
+  comments: [commentSchema],  // コメントを含む
   series: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Series',  // シリーズ情報を保持するフィールドを追加
   },
+
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+
 });
 
 
-// ドキュメント保存時に Elasticsearch にインデックス
+// Post.jsのpostSchema.post('save')フックを更新
 postSchema.post('save', async function (doc) {
   try {
     if (!esClient) throw new Error('❌ Elasticsearch client is undefined');
@@ -61,17 +77,30 @@ postSchema.post('save', async function (doc) {
     console.log('🔍 元のコンテンツ:', doc.content);
     console.log('🛠 サニタイズ後のコンテンツ:', cleanContent);
 
+    // Elasticsearch に保存するデータを準備
+    const esBody = {
+      title: doc.title,
+      content: cleanContent,  // 🔥 タグ除去後のコンテンツを使用
+      description: doc.description,
+      tags: doc.tags || [],
+      author: doc.author.toString(),
+      createdAt: doc.createdAt,
+    };
+
+    // aiEvidenceフィールドがある場合は追加
+    if (doc.aiEvidence) {
+      esBody.aiEvidence = {
+        tools: doc.aiEvidence.tools || [],
+        url: doc.aiEvidence.url || '',
+        description: doc.aiEvidence.description || ''
+      };
+    }
+
     // Elasticsearch に保存
     const response = await esClient.index({
       index: 'posts',
       id: doc._id.toString(),
-      body: {
-        title: doc.title,
-        content: cleanContent,  // 🔥 タグ除去後のコンテンツを使用
-        tags: doc.tags || [],
-        author: doc.author.toString(),
-        createdAt: doc.createdAt,
-      },
+      body: esBody,
     });
 
     console.log('✅ Document indexed in Elasticsearch:', response);

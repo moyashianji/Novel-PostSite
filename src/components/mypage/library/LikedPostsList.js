@@ -1,6 +1,7 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box } from '@mui/material';
+import { Card, CardContent, Typography, Box ,Grid} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import PostCard from '../../../components/post/PostCard.js';
 
 const LikedPostsList = ({ likedPosts = [] }) => {
   const navigate = useNavigate();
@@ -19,20 +20,15 @@ const LikedPostsList = ({ likedPosts = [] }) => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      {likedPosts.map((post) => (
-        <Card
-          key={post._id}
-          sx={{ marginBottom: 2, width: '100%', cursor: 'pointer' }}
-          onClick={() => handleCardClick(post._id)}
-        >
-          <CardContent>
-            <Typography variant="subtitle1">{post.title}</Typography>
-            <Typography variant="body2" color="textSecondary">
-              {post.description}
-            </Typography>
-          </CardContent>
-        </Card>
-      ))}
+            <Grid container spacing={2}>
+      
+      {likedPosts.map(post => (
+                  <Grid item xs={12} sm={6} key={post._id}>
+                    <PostCard post={post} />
+                  </Grid>
+                ))}
+                      </Grid>
+                
     </Box>
   );
 };

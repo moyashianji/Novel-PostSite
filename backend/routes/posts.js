@@ -132,13 +132,30 @@ router.get('/:id([0-9a-fA-F]{24})', async (req, res) => {
 });
 // 新規投稿エンドポイント
 router.post('/', authenticateToken, async (req, res) => {
-  const { title, content, description, tags, original, adultContent, aiGenerated, charCount, author, series } = req.body;
-
+  const { 
+    title, 
+    content, 
+    description, 
+    tags, 
+    original, 
+    adultContent, 
+    aiGenerated, 
+    aiEvidence,  // AIツール情報と説明を含むオブジェクト
+    charCount, 
+    imageCount,  // 画像数を追加
+    author, 
+    series,
+    isPublic,    // 公開/非公開設定
+    allowComments // コメント許可/禁止設定
+  } = req.body;
   // バリデーション
-  if (!title || !content || !description || !tags || tags.length === 0 || aiGenerated === null || original === null || adultContent === null) {
+  if (!title || !content || !description || !tags || tags.length === 0 || original === null || adultContent === null) {
     return res.status(400).json({ message: 'すべてのフィールドに入力してください。' });
   }
-
+  // AIツール関連のバリデーション（aiGenerated は常にtrue）
+  if (!aiEvidence || !aiEvidence.tools || aiEvidence.tools.length === 0 || !aiEvidence.description) {
+    return res.status(400).json({ message: 'AI使用に関する情報は必須です。' });
+  }
   try {
     // 新しい投稿の作成
     const newPost = new Post({
@@ -148,10 +165,21 @@ router.post('/', authenticateToken, async (req, res) => {
       tags,
       isOriginal: original,
       isAdultContent: adultContent,
-      isAI: aiGenerated,      // フィールド名を isAI に変更
+      isAI: true,      // フィールド名を isAI に変更
+      aiEvidence: {
+        tools: aiEvidence.tools,  // 使用したAIツールのリスト
+        url: aiEvidence.url,      // 証明URL（オプショナル）
+        description: aiEvidence.description  // 使用説明
+      },
+      imageCount: imageCount || 0, // 画像数（指定がなければ0）
+
       wordCount: charCount,    // フィールド名を wordCount に変更
       author,
       series, // シリーズIDを追加
+      isPublic: isPublic !== undefined ? isPublic : true,  // デフォルトは公開
+      allowComments: allowComments !== undefined ? allowComments : true,  // デフォルトはコメント許可
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
 
     // データベースに保存
@@ -413,7 +441,15 @@ router.get('/search', async (req, res) => {
 router.get('/user/liked', authenticateToken, async (req, res) => {
   try {
     const userId = req.user._id;
-    const likedPosts = await Good.find({ user: userId }).populate('post', 'title description author');
+    const likedPosts = await Good.find({ user: userId })
+    .populate({
+      path: 'post',
+      select: 'title description author series tags viewCounter goodCounter bookShelfCounter wordCount isAdultContent isAI isOriginal',
+      populate: [
+        { path: 'author' },
+        { path: 'series' }
+      ]
+    });
 
     res.status(200).json(likedPosts.map(good => good.post));
   } catch (error) {

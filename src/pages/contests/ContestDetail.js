@@ -30,8 +30,76 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Container,
+  Stack,
+  Backdrop,
+  Fade,
+  useTheme,
+  Tabs,
+  Tab,
+  Tooltip,
+  Badge,
+  alpha,
+  Alert,
+  styled,
+  Skeleton,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import {
+  Close as CloseIcon,
+  EditCalendar as EditCalendarIcon,
+  MilitaryTech as MilitaryTechIcon,
+  Done as DoneIcon,
+  Cancel as CancelIcon,
+  Event as EventIcon,
+  Search as SearchIcon,
+  FiberNew as NewIcon, 
+  Stars as StarsIcon,
+  Info as InfoIcon,
+  ContentCopy as ContentCopyIcon,
+  Visibility as VisibilityIcon,
+  Favorite as FavoriteIcon,
+  ThumbUp as ThumbUpIcon,
+  Share as ShareIcon,
+  Flag as FlagIcon,
+  Person as PersonIcon,
+  Description as DescriptionIcon,
+  CheckCircle as CheckCircleIcon,
+  VerifiedUser as VerifiedUserIcon,
+  EmojiEvents as EmojiEventsIcon,
+  ArrowForward as ArrowForwardIcon,
+  AccessTime as AccessTimeIcon,
+  Add as AddIcon,
+} from '@mui/icons-material';
+
+// スタイル付きコンポーネント
+const StyledBadge = styled(Badge)(({ theme }) => ({
+  '& .MuiBadge-badge': {
+    right: -3,
+    top: 13,
+    border: `2px solid ${theme.palette.background.paper}`,
+    padding: '0 4px',
+  },
+}));
+
+const StickyContainer = styled(Box)(({ theme }) => ({
+  position: 'sticky',
+  top: 80,
+  marginBottom: theme.spacing(3),
+}));
+
+const GradientOverlayBox = styled(Box)(({ theme }) => ({
+  position: 'relative',
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    height: '50%',
+    background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
+    pointerEvents: 'none',
+  },
+}));
 
 const ContestDetail = () => {
   const { id } = useParams();
@@ -46,7 +114,8 @@ const ContestDetail = () => {
   const [judgeDetails, setJudgeDetails] = useState({});
   const [creatorInfo, setCreatorInfo] = useState(null);
   const [sortOrder, setSortOrder] = useState('latest');
-
+  const [tabValue, setTabValue] = useState(0);
+  const theme = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -112,7 +181,7 @@ const ContestDetail = () => {
   }, [works]);
 
   const isWorkAlreadyApplied = useCallback((workId) =>
-    contest.entries.some((entry) => entry.postId._id === workId), [contest]);
+    contest?.entries?.some((entry) => entry.postId._id === workId), [contest]);
 
   const handleSubmitEntry = useCallback(async (workId) => {
     try {
@@ -124,13 +193,14 @@ const ContestDetail = () => {
       });
 
       if (response.ok) {
-        alert('応募が完了しました！');
-        setModalOpen(false);
         const contestResponse = await fetch(`/api/contests/${id}`);
         if (contestResponse.ok) {
           const updatedContest = await contestResponse.json();
           setContest(updatedContest);
+          // 成功通知
+          alert('応募が完了しました！');
         }
+        setModalOpen(false);
       } else {
         const errorData = await response.json();
         alert(errorData.message || '応募に失敗しました。');
@@ -233,20 +303,56 @@ const ContestDetail = () => {
   const getStatusChip = useCallback((status) => {
     switch (status) {
       case '開催予定':
-        return <Chip label="開催予定" color="info" />;
+        return (
+          <Chip 
+            icon={<EventIcon />} 
+            label="開催予定" 
+            color="info" 
+            sx={{ fontWeight: 'bold', fontSize: '0.9rem', px: 1 }}
+          />
+        );
       case '募集中':
-        return <Chip label="募集中" color="success" />;
+        return (
+          <Chip 
+            icon={<AddIcon />} 
+            label="募集中" 
+            color="success" 
+            sx={{ fontWeight: 'bold', fontSize: '0.9rem', px: 1 }}
+          />
+        );
       case '募集終了':
-        return <Chip label="募集終了" color="error" />;
+        return (
+          <Chip 
+            icon={<DoneIcon />} 
+            label="募集終了" 
+            color="error" 
+            sx={{ fontWeight: 'bold', fontSize: '0.9rem', px: 1 }}
+          />
+        );
       case '募集一時停止中':
-        return <Chip label="募集一時停止中" color="warning" />;
+        return (
+          <Chip 
+            icon={<InfoIcon />} 
+            label="募集一時停止中" 
+            color="warning" 
+            sx={{ fontWeight: 'bold', fontSize: '0.9rem', px: 1 }}
+          />
+        );
       default:
-        return <Chip label="不明" color="default" />;
+        return (
+          <Chip 
+            icon={<InfoIcon />} 
+            label="不明" 
+            color="default" 
+            sx={{ fontWeight: 'bold', fontSize: '0.9rem', px: 1 }}
+          />
+        );
     }
   }, []);
 
   const renderStatusChip = useCallback((status) => (
     <Chip
+      icon={status ? <CheckCircleIcon /> : <CancelIcon />}
       label={status ? '可' : '不可'}
       color={status ? 'success' : 'error'}
       sx={{ fontWeight: 'bold', marginLeft: 1 }}
@@ -275,320 +381,1009 @@ const ContestDetail = () => {
     return html.replace(/<img src="\/uploads\/(.*?)"/g, `<img src="http://localhost:5000/uploads/$1"`);
   }, []);
 
-  if (loading) return <CircularProgress sx={{ display: 'block', margin: '50px auto' }} />;
-  if (!contest) return <Typography>コンテストが見つかりませんでした。</Typography>;
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const isContestActive = useMemo(() => {
+    if (!contest) return false;
+    return contest.status === '募集中';
+  }, [contest]);
+
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 5 }}>
+        <LoadingSkeleton />
+      </Container>
+    );
+  }
+  
+  if (!contest) return (
+    <Container maxWidth="lg" sx={{ py: 5, textAlign: 'center' }}>
+      <Paper elevation={3} sx={{ p: 5, borderRadius: 2 }}>
+        <Typography variant="h4" color="error" gutterBottom>
+          コンテストが見つかりませんでした
+        </Typography>
+        <Typography variant="body1" sx={{ mb: 3 }}>
+          お探しのコンテストは削除されたか、URLが間違っている可能性があります。
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={() => navigate('/contests')}
+          startIcon={<ArrowForwardIcon />}
+        >
+          コンテスト一覧に戻る
+        </Button>
+      </Paper>
+    </Container>
+  );
 
   return (
-    <Grid container spacing={2} sx={{ maxWidth: '1400px', margin: '0 auto', paddingTop: 4 }}>
-      <Grid item xs={12} md={3}>
-        <Sidebar
-          creatorInfo={creatorInfo}
-          contest={contest}
-          getStatusChip={getStatusChip}
-          handleOpenModal={handleOpenModal}
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* ヘッダーバナー */}
+      {contest.headerImage && (
+        <HeaderBanner 
+          headerImage={contest.headerImage} 
+          title={contest.title} 
+          status={contest.status} 
+          getStatusChip={getStatusChip} 
         />
-      </Grid>
-      <Grid item xs={12} md={8} sx={{ paddingLeft: 2, paddingRight: 2 }}>
-        <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: 4 }}>
-          {contest.headerImage && (
-            <HeaderImage headerImage={contest.headerImage} title={contest.title} />
-          )}
-          <ContestOverview
+      )}
+
+      <Grid container spacing={3}>
+        {/* サイドバー */}
+        <Grid item xs={12} md={3}>
+          <Sidebar
+            creatorInfo={creatorInfo}
             contest={contest}
-            fixImagePaths={fixImagePaths}
+            getStatusChip={getStatusChip}
             handleOpenModal={handleOpenModal}
+            isContestActive={isContestActive}
           />
-          <EntryConditions
-            contest={contest}
-            renderStatusChip={renderStatusChip}
-            handleTagClick={handleTagClick}
-          />
-          <ScheduleInfo contest={contest} formatDate={formatDate} />
+        </Grid>
+
+        {/* メインコンテンツ */}
+        <Grid item xs={12} md={9}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            variant="fullWidth"
+            sx={{ 
+              mb: 3,
+              '& .MuiTabs-indicator': {
+                height: 3,
+                borderRadius: '3px 3px 0 0',
+              },
+              '& .MuiTab-root': {
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                py: 2,
+              }
+            }}
+          >
+            <Tab icon={<DescriptionIcon />} iconPosition="start" label="概要" />
+            <Tab icon={<InfoIcon />} iconPosition="start" label="応募条件" />
+            <Tab 
+              icon={
+                <Badge 
+                  badgeContent={contest.entries.length} 
+                  color="primary"
+                  sx={{ '& .MuiBadge-badge': { fontWeight: 'bold' } }}
+                >
+                  <EmojiEventsIcon />
+                </Badge>
+              } 
+              iconPosition="start" 
+              label="応募作品" 
+            />
+            {contest.enableJudges && contest.judges.length > 0 && (
+              <Tab icon={<VerifiedUserIcon />} iconPosition="start" label="審査員" />
+            )}
+          </Tabs>
+
+          {/* タブコンテンツ */}
+          <Box sx={{ display: tabValue === 0 ? 'block' : 'none' }}>
+            <ContestOverview
+              contest={contest}
+              fixImagePaths={fixImagePaths}
+              handleOpenModal={handleOpenModal}
+              isContestActive={isContestActive}
+            />
+            <ScheduleInfo contest={contest} formatDate={formatDate} />
+          </Box>
+
+          <Box sx={{ display: tabValue === 1 ? 'block' : 'none' }}>
+            <EntryConditions
+              contest={contest}
+              renderStatusChip={renderStatusChip}
+              handleTagClick={handleTagClick}
+            />
+          </Box>
+
+          <Box sx={{ display: tabValue === 2 ? 'block' : 'none' }}>
+            <EntriesList
+              contest={contest}
+              sortedEntries={sortedEntries}
+              sortOrder={sortOrder}
+              setSortOrder={setSortOrder}
+            />
+          </Box>
+
           {contest.enableJudges && contest.judges.length > 0 && (
-            <JudgesInfo judges={contest.judges} />
+            <Box sx={{ display: tabValue === 3 ? 'block' : 'none' }}>
+              <JudgesInfo contest={contest} />
+            </Box>
           )}
-          <ApplyModal
-            modalOpen={modalOpen}
-            handleCloseModal={handleCloseModal}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            handleSearch={handleSearch}
-            filteredWorks={filteredWorks}
-            isWorkAlreadyApplied={isWorkAlreadyApplied}
-            handleSubmitEntry={handleSubmitEntry}
-            handleCancelEntry={handleCancelEntry}
-          />
-          <ConfirmationDialog
-            confirmationOpen={confirmationOpen}
-            setConfirmationOpen={setConfirmationOpen}
-            confirmCancelEntry={confirmCancelEntry}
-          />
-          <EntriesList
-            contest={contest}
-            sortedEntries={sortedEntries}
-            sortOrder={sortOrder}
-            setSortOrder={setSortOrder}
-          />
-        </Box>
+        </Grid>
       </Grid>
-    </Grid>
+
+      {/* モーダル類 */}
+      <ApplyModal
+        modalOpen={modalOpen}
+        handleCloseModal={handleCloseModal}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
+        filteredWorks={filteredWorks}
+        isWorkAlreadyApplied={isWorkAlreadyApplied}
+        handleSubmitEntry={handleSubmitEntry}
+        handleCancelEntry={handleCancelEntry}
+      />
+
+      <ConfirmationDialog
+        confirmationOpen={confirmationOpen}
+        setConfirmationOpen={setConfirmationOpen}
+        confirmCancelEntry={confirmCancelEntry}
+      />
+
+      {/* スタイル */}
+      <style>
+        {`
+          .contest-description img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block !important;
+            margin: 10px auto !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+          }
+          
+          .contest-description a {
+            color: ${theme.palette.primary.main} !important;
+            text-decoration: none !important;
+            font-weight: bold !important;
+          }
+          
+          .contest-description a:hover {
+            text-decoration: underline !important;
+          }
+          
+          .contest-description h1, 
+          .contest-description h2, 
+          .contest-description h3 {
+            margin-top: 24px !important;
+            margin-bottom: 16px !important;
+            font-weight: bold !important;
+            line-height: 1.3 !important;
+          }
+          
+          .contest-description p {
+            margin-bottom: 16px !important;
+            line-height: 1.6 !important;
+          }
+          
+          .contest-description blockquote {
+            border-left: 4px solid ${theme.palette.primary.main} !important;
+            padding-left: 16px !important;
+            margin-left: 0 !important;
+            color: ${theme.palette.text.secondary} !important;
+            font-style: italic !important;
+          }
+        `}
+      </style>
+    </Container>
   );
 };
 
-const Sidebar = React.memo(({ creatorInfo, contest, getStatusChip, handleOpenModal }) => (
-  <Box sx={{ top: 80 }}>
-    <Paper elevation={3} sx={{ padding: 2, borderRadius: '8px', backgroundColor: '#fff' }}>
-      <Typography variant="h6" textAlign="center">主催者</Typography>
-      {creatorInfo ? (
-        <>
-          <RouterLink to={`/user/${creatorInfo._id}`}>
-            <Avatar src={creatorInfo.icon} alt={creatorInfo.nickname} sx={{ width: 80, height: 80, mx: 'auto', mt: 2 }} />
-          </RouterLink>
-          <Typography variant="h6" textAlign="center">{creatorInfo.nickname}</Typography>
-        </>
-      ) : (
-        <Typography variant="body2" textAlign="center">主催者情報を取得中...</Typography>
-      )}
-      <Divider sx={{ my: 2 }} />
-      <Typography variant="h4" fontWeight="bold" textAlign="center">{contest.entries.length}</Typography>
-      <Typography variant="body2" color="text.secondary" textAlign="center">応募作品総数</Typography>
-      <Divider sx={{ my: 2 }} />
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-        {getStatusChip(contest.status)}
-      </Box>
-      <Box textAlign="center">
-        <Button variant="contained" color="primary" size="large" onClick={handleOpenModal}>
-          応募する
-        </Button>
-      </Box>
-    </Paper>
+// ローディングスケルトン
+const LoadingSkeleton = () => (
+  <Box>
+    <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 2, mb: 3 }} />
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={3}>
+        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
+      </Grid>
+      <Grid item xs={12} md={9}>
+        <Skeleton variant="rectangular" height={60} sx={{ borderRadius: 2, mb: 3 }} />
+        <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 2, mb: 3 }} />
+        <Skeleton variant="text" height={40} sx={{ mb: 1 }} />
+        <Skeleton variant="text" height={40} sx={{ mb: 1 }} />
+        <Skeleton variant="text" height={40} sx={{ mb: 1 }} />
+      </Grid>
+    </Grid>
   </Box>
-));
+);
 
-const HeaderImage = React.memo(({ headerImage, title }) => (
-  <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: '8px', marginBottom: 4 }}>
-    <img
-      src={headerImage}
-      alt={title}
-      style={{ width: '100%', height: '300px', objectFit: 'cover' }}
-    />
-  </Paper>
-));
+// ヘッダーバナー
+const HeaderBanner = ({ headerImage, title, status, getStatusChip }) => (
+  <Box sx={{ position: 'relative', mb: 4, borderRadius: 3, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}>
+    <Box sx={{ position: 'relative' }}>
+      <img
+        src={headerImage}
+        alt={title}
+        style={{ 
+          width: '100%', 
+          height: '300px', 
+          objectFit: 'cover', 
+          display: 'block',
+        }}
+      />
+      <Box sx={{ 
+        position: 'absolute', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        backgroundImage: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))', 
+        p: 3,
+        pt: 6,
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h3" component="h1" sx={{ color: 'white', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+            {title}
+          </Typography>
+          <Box>
+            {getStatusChip(status)}
+          </Box>
+        </Box>
+      </Box>
+    </Box>
+  </Box>
+);
 
-const ContestOverview = React.memo(({ contest, fixImagePaths, handleOpenModal }) => (
-  <>
-    <Typography variant="h5" gutterBottom>
-      コンテスト概要
-    </Typography>
-    <Paper
-      elevation={3}
-      sx={{
-        padding: 3,
-        borderRadius: '8px',
-        backgroundColor: '#fff',
-        wordBreak: 'break-word',
-        overflowWrap: 'break-word',
-        maxWidth: '100%',
-        whiteSpace: 'normal',
+// サイドバー
+const Sidebar = React.memo(({ creatorInfo, contest, getStatusChip, handleOpenModal, isContestActive }) => (
+  <StickyContainer>
+    <Paper 
+      elevation={3} 
+      sx={{ 
+        borderRadius: 3,
+        overflow: 'hidden',
       }}
     >
-      <Typography variant="h3" fontWeight="bold" gutterBottom>
-        {contest.title}
+      <Box sx={{ bgcolor: 'primary.main', p: 2, color: 'white', textAlign: 'center' }}>
+        <Typography variant="h6" fontWeight="bold">主催者</Typography>
+      </Box>
+      
+      <Box sx={{ p: 3 }}>
+        {creatorInfo ? (
+          <Stack alignItems="center" spacing={2}>
+            <RouterLink to={`/user/${creatorInfo._id}`} style={{ textDecoration: 'none' }}>
+              <StyledBadge
+                overlap="circular"
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                badgeContent={
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      bgcolor: 'success.main',
+                      borderRadius: '50%',
+                      border: '2px solid white',
+                    }}
+                  />
+                }
+              >
+                <Avatar 
+                  src={creatorInfo.icon} 
+                  alt={creatorInfo.nickname} 
+                  sx={{ 
+                    width: 100, 
+                    height: 100,
+                    border: '3px solid white',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                  }} 
+                />
+              </StyledBadge>
+            </RouterLink>
+            <Typography variant="h6" fontWeight="bold" align="center">
+              {creatorInfo.nickname}
+            </Typography>
+          </Stack>
+        ) : (
+          <Box sx={{ textAlign: 'center', py: 2 }}>
+            <CircularProgress size={40} />
+            <Typography variant="body2" sx={{ mt: 1 }}>主催者情報を取得中...</Typography>
+          </Box>
+        )}
+
+        <Divider sx={{ my: 3 }} />
+        
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
+          <Typography 
+            variant="h3" 
+            fontWeight="bold" 
+            color="primary" 
+            sx={{ mb: 1 }}
+          >
+            {contest.entries.length}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            応募作品数
+          </Typography>
+        </Box>
+        
+        <Divider sx={{ my: 3 }} />
+        
+        <Box sx={{ textAlign: 'center' }}>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+            {getStatusChip(contest.status)}
+          </Box>
+          
+          <Button 
+            variant="contained" 
+            color="primary" 
+            size="large" 
+            fullWidth
+            onClick={handleOpenModal}
+            disabled={!isContestActive}
+            startIcon={<AddIcon />}
+            sx={{ 
+              borderRadius: 2,
+              py: 1.5,
+              fontWeight: 'bold',
+              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
+            }}
+          >
+            応募する
+          </Button>
+          
+          {!isContestActive && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+              現在、このコンテストは応募を受け付けていません
+            </Typography>
+          )}
+        </Box>
+        
+        {/* コンテスト情報 */}
+        <Box sx={{ mt: 3 }}>
+          <List disablePadding>
+            <ListItem sx={{ px: 0, py: 1.5 }}>
+              <ListItemText 
+                primary={
+                  <Typography variant="body2" color="text.secondary">
+                    応募期間
+                  </Typography>
+                }
+                secondary={
+                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
+                    {new Date(contest.applicationStartDate).toLocaleDateString()} 〜 {new Date(contest.applicationEndDate).toLocaleDateString()}
+                  </Typography>
+                }
+                disableTypography
+              />
+            </ListItem>
+            
+            <Divider />
+            
+            <ListItem sx={{ px: 0, py: 1.5 }}>
+              <ListItemText 
+                primary={
+                  <Typography variant="body2" color="text.secondary">
+                    結果発表
+                  </Typography>
+                }
+                secondary={
+                  <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
+                    {new Date(contest.resultAnnouncementDate).toLocaleDateString()}
+                  </Typography>
+                }
+                disableTypography
+              />
+            </ListItem>
+            
+            {contest.minEntries > 0 && (
+              <>
+                <Divider />
+                <ListItem sx={{ px: 0, py: 1.5 }}>
+                  <ListItemText 
+                    primary={
+                      <Typography variant="body2" color="text.secondary">
+                        開催最低応募数
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="body2" fontWeight="medium" sx={{ mt: 0.5 }}>
+                        {contest.minEntries}作品
+                      </Typography>
+                    }
+                    disableTypography
+                  />
+                </ListItem>
+              </>
+            )}
+          </List>
+        </Box>
+      </Box>
+    </Paper>
+    
+    {/* シェアボタン */}
+    <Paper 
+      elevation={2} 
+      sx={{ 
+        borderRadius: 3, 
+        mt: 3, 
+        p: 2,
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 2
+      }}
+    >
+      <Tooltip title="シェア">
+        <IconButton 
+          color="primary" 
+          sx={{ 
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+            '&:hover': {
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
+            }
+          }}
+        >
+          <ShareIcon />
+        </IconButton>
+      </Tooltip>
+      
+      <Tooltip title="フラグを立てる">
+        <IconButton 
+          color="error" 
+          sx={{ 
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+            '&:hover': {
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
+            }
+          }}
+        >
+          <FlagIcon />
+        </IconButton>
+      </Tooltip>
+    </Paper>
+  </StickyContainer>
+));
+
+// コンテスト概要
+const ContestOverview = React.memo(({ contest, fixImagePaths, handleOpenModal, isContestActive }) => (
+  <Paper
+    elevation={3}
+    sx={{
+      borderRadius: 3,
+      overflow: 'hidden',
+      mb: 4
+    }}
+  >
+    <Box sx={{ bgcolor: 'primary.main', p: 2, color: 'white' }}>
+      <Typography variant="h6" fontWeight="bold">
+        <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+        コンテスト概要
       </Typography>
+    </Box>
+    
+    <Box sx={{ p: 3 }}>
       <Typography variant="h6" color="text.secondary" gutterBottom>
         {contest.shortDescription}
       </Typography>
-      <div
+      
+      <Divider sx={{ my: 3 }} />
+      
+      <Box 
         className="contest-description"
+        sx={{ 
+          typography: 'body1',
+          lineHeight: 1.7,
+          '& > *:first-of-type': { mt: 0 }
+        }}
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(fixImagePaths(contest.description)) }}
       />
-    </Paper>
-    <style>
-      {`
-        .contest-description img {
-          max-width: 100% !important;
-          height: auto !important;
-          display: block !important;
-          margin: 10px auto !important;
-        }
-      `}
-    </style>
-    <Box textAlign="center" mt={4}>
-      <Button variant="contained" color="primary" size="large" onClick={handleOpenModal}>
-        応募する
-      </Button>
+      
+      {isContestActive && (
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            size="large" 
+            onClick={handleOpenModal}
+            startIcon={<AddIcon />}
+            sx={{ 
+              py: 1.5, 
+              px: 4, 
+              borderRadius: 2,
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
+            }}
+          >
+            応募する
+          </Button>
+        </Box>
+      )}
     </Box>
-  </>
+  </Paper>
 ));
 
-const EntryConditions = React.memo(({ contest, renderStatusChip, handleTagClick }) => (
-  <Box mt={4}>
-    <Typography variant="h5" gutterBottom>
-      応募条件（詳しくはコンテスト概要を読んでください）
-    </Typography>
-    <Paper elevation={3} sx={{ padding: 3, borderRadius: '8px', backgroundColor: '#fff' }}>
-      <List>
-        <ListItem>
-          <ListItemText primary="応募可能な作品のステータス" />
-        </ListItem>
-        <ListItem>
-          <Chip
-            label={contest.allowFinishedWorks ? '完結済作品のみ応募可能' : '未完結作品も応募可能'}
-            color={contest.allowFinishedWorks ? 'success' : 'warning'}
-            sx={{ fontWeight: 'bold', marginLeft: 1 }}
-          />
-        </ListItem>
-        <Divider />
-        <ListItem>
-          <ListItemText primary="コンテスト開催前に投稿された作品の応募" />
-        </ListItem>
-        <ListItem>
-          {renderStatusChip(contest.allowPreStartDate)}
-        </ListItem>
-        <Divider />
-        <ListItem>
-          <ListItemText primary="R18作品" />
-        </ListItem>
-        <ListItem>
-          {renderStatusChip(contest.allowR18)}
-        </ListItem>
-        <Divider />
-        <ListItem>
-          <ListItemText primary="シリーズ作品の応募について" />
-        </ListItem>
-        <ListItem>
-          {renderStatusChip(contest.allowSeries)}
-        </ListItem>
-        <Divider />
-        <ListItem>
-          <ListItemText primary="ジャンル制限" />
-        </ListItem>
-        <ListItem>
-          <Box>
-            {contest.restrictGenres && contest.genres.length > 0 ? (
-              contest.genres.map((tag, index) => (
-                <Chip
-                  key={index}
-                  label={tag}
-                  sx={{ marginRight: 0.5, marginBottom: 0.5 }}
-                  onClick={() => handleTagClick(tag)}
-                />
-              ))
-            ) : (
-              <Typography variant="body2" color="text.secondary">なし</Typography>
-            )}
-          </Box>
-        </ListItem>
-        <Divider />
-        <ListItem>
-          <ListItemText primary="AI使用制限" />
-        </ListItem>
-        <ListItem>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-            {contest.restrictAI && contest.aiTags.length > 0 ? (
-              contest.aiTags.map((tag, index) => (
-                <Chip
-                  key={index}
-                  label={tag}
-                  sx={{ marginRight: 0.5, marginBottom: 0.5 }}
-                  onClick={() => handleTagClick(tag)}
-                />
-              ))
-            ) : (
-              <Typography variant="body2" color="text.secondary">なし</Typography>
-            )}
-          </Box>
-        </ListItem>
-        <Divider />
-        <ListItem>
-          <ListItemText primary="文字数制限（最低～最大）" />
-        </ListItem>
-        <ListItem>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-            <Typography variant="h6" fontWeight="bold" color="primary">
-              {contest.minWordCount}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              ～
-            </Typography>
-            <Typography variant="h6" fontWeight="bold" color="primary">
-              {contest.maxWordCount > 0 ? contest.maxWordCount : '制限なし'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              文字
-            </Typography>
-          </Box>
-        </ListItem>
-        <Divider />
-        <ListItem>
-          <ListItemText primary="コンテストの実施に必要な最低応募総数" />
-        </ListItem>
-        <ListItem>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-            <Typography variant="h6" fontWeight="bold" color="primary">
-              {contest.minEntries > 0 ? contest.minEntries : '制限なし'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              作品
-            </Typography>
-          </Box>
-        </ListItem>
-      </List>
-    </Paper>
-  </Box>
-));
-
+// 開催スケジュール情報
 const ScheduleInfo = React.memo(({ contest, formatDate }) => (
-  <Box mt={4}>
-    <Typography variant="h5" gutterBottom>
-      日程情報
-    </Typography>
-    <Paper elevation={3} sx={{ padding: 3, borderRadius: '8px', backgroundColor: '#fff' }}>
-      <List>
-        <ListItem>
-          <ListItemText primary="応募期間" secondary={`${formatDate(contest.applicationStartDate)} - ${formatDate(contest.applicationEndDate)}`} />
+  <Paper
+    elevation={3}
+    sx={{
+      borderRadius: 3,
+      overflow: 'hidden',
+      mb: 4
+    }}
+  >
+    <Box sx={{ bgcolor: 'secondary.main', p: 2, color: 'white' }}>
+      <Typography variant="h6" fontWeight="bold">
+        <EventIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+        開催スケジュール
+      </Typography>
+    </Box>
+    
+    <Box sx={{ p: 0 }}>
+      <List disablePadding>
+        <ListItem sx={{ py: 2, px: 3 }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={4}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                応募期間
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={8}>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  color: 'primary.main',
+                  fontWeight: 'medium', 
+                }}
+              >
+                <AccessTimeIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                {formatDate(contest.applicationStartDate)} 〜 {formatDate(contest.applicationEndDate)}
+              </Typography>
+            </Grid>
+          </Grid>
         </ListItem>
+        
         <Divider />
-        <ListItem>
-          <ListItemText primary="審査期間" secondary={`${formatDate(contest.reviewStartDate)} - ${formatDate(contest.reviewEndDate)}`} />
+        
+        <ListItem sx={{ py: 2, px: 3 }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={4}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                審査期間
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={8}>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  color: 'secondary.main',
+                  fontWeight: 'medium',
+                }}
+              >
+                <MilitaryTechIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                {formatDate(contest.reviewStartDate)} 〜 {formatDate(contest.reviewEndDate)}
+              </Typography>
+            </Grid>
+          </Grid>
         </ListItem>
+        
         <Divider />
-        <ListItem>
-          <ListItemText primary="結果発表日" secondary={formatDate(contest.resultAnnouncementDate)} />
+        
+        <ListItem sx={{ py: 2, px: 3, bgcolor: alpha('#f5f5f5', 0.5) }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={4}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                結果発表日
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={8}>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  color: 'error.main',
+                  fontWeight: 'bold',
+                }}
+              >
+                <EmojiEventsIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                {formatDate(contest.resultAnnouncementDate)}
+              </Typography>
+            </Grid>
+          </Grid>
         </ListItem>
       </List>
+    </Box>
+  </Paper>
+));
+
+// 応募条件
+const EntryConditions = React.memo(({ contest, renderStatusChip, handleTagClick }) => (
+  <Paper
+    elevation={3}
+    sx={{
+      borderRadius: 3,
+      overflow: 'hidden',
+      mb: 4
+    }}
+  >
+    <Box sx={{ bgcolor: 'info.main', p: 2, color: 'white' }}>
+      <Typography variant="h6" fontWeight="bold">
+        <InfoIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+        応募条件
+      </Typography>
+    </Box>
+    
+    <Alert severity="info" sx={{ m: 3, borderRadius: 2 }}>
+      詳しい条件はコンテスト概要を必ずご確認ください。応募条件に合わない作品は審査対象外となる場合があります。
+    </Alert>
+    
+    <Box sx={{ p: 0 }}>
+      <List disablePadding>
+        <ListItem sx={{ py: 2, px: 3, bgcolor: alpha('#f5f5f5', 0.3) }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                応募可能な作品のステータス
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Chip
+                icon={contest.allowFinishedWorks ? <CheckCircleIcon /> : <InfoIcon />}
+                label={contest.allowFinishedWorks ? '完結済作品のみ応募可能' : '未完結作品も応募可能'}
+                color={contest.allowFinishedWorks ? 'success' : 'warning'}
+                sx={{ fontWeight: 'bold' }}
+              />
+            </Grid>
+          </Grid>
+        </ListItem>
+        
+        <Divider />
+        
+        <ListItem sx={{ py: 2, px: 3 }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                コンテスト開催前の作品
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {renderStatusChip(contest.allowPreStartDate)}
+            </Grid>
+          </Grid>
+        </ListItem>
+        
+        <Divider />
+        
+        <ListItem sx={{ py: 2, px: 3, bgcolor: alpha('#f5f5f5', 0.3) }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                R18作品
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {renderStatusChip(contest.allowR18)}
+            </Grid>
+          </Grid>
+        </ListItem>
+        
+        <Divider />
+        
+        <ListItem sx={{ py: 2, px: 3 }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                シリーズ作品
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {renderStatusChip(contest.allowSeries)}
+            </Grid>
+          </Grid>
+        </ListItem>
+        
+        <Divider />
+        
+        <ListItem sx={{ py: 2, px: 3, bgcolor: alpha('#f5f5f5', 0.3) }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                ジャンル制限
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {contest.restrictGenres && contest.genres.length > 0 ? (
+                  contest.genres.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      size="small"
+                      onClick={() => handleTagClick(tag)}
+                      sx={{ fontWeight: 'medium' }}
+                    />
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">制限なし</Typography>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        </ListItem>
+        
+        <Divider />
+        
+        <ListItem sx={{ py: 2, px: 3 }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                AI使用制限
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {contest.restrictAI && contest.aiTags.length > 0 ? (
+                  contest.aiTags.map((tag, index) => (
+                    <Chip
+                      key={index}
+                      label={tag}
+                      size="small"
+                      onClick={() => handleTagClick(tag)}
+                      color="secondary"
+                      sx={{ fontWeight: 'medium' }}
+                    />
+                  ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary">制限なし</Typography>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        </ListItem>
+        
+        <Divider />
+        
+        <ListItem sx={{ py: 2, px: 3, bgcolor: alpha('#f5f5f5', 0.3) }}>
+          <Grid container alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                文字数制限
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="h6" fontWeight="bold" color="primary">
+                  {contest.minWordCount}
+                </Typography>
+                <Typography variant="body1" sx={{ mx: 1 }}>
+                  ～
+                </Typography>
+                <Typography variant="h6" fontWeight="bold" color="primary">
+                  {contest.maxWordCount > 0 ? contest.maxWordCount : '制限なし'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                  文字
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+        </ListItem>
+        
+        {contest.minEntries > 0 && (
+          <>
+            <Divider />
+            <ListItem sx={{ py: 2, px: 3 }}>
+              <Grid container alignItems="center">
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle1" fontWeight="medium">
+                    開催最低応募数
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography variant="h6" fontWeight="bold" color="primary">
+                      {contest.minEntries}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                      作品
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </ListItem>
+          </>
+        )}
+      </List>
+    </Box>
+  </Paper>
+));
+
+// 審査員情報
+const JudgesInfo = React.memo(({ contest }) => (
+  <Box mb={4}>
+    <Paper
+      elevation={3}
+      sx={{
+        borderRadius: 3,
+        overflow: 'hidden',
+      }}
+    >
+      <Box sx={{ bgcolor: 'success.main', p: 2, color: 'white' }}>
+        <Typography variant="h6" fontWeight="bold">
+          <VerifiedUserIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          審査員
+        </Typography>
+      </Box>
+      
+      <Box sx={{ p: 3 }}>
+        <Grid container spacing={3}>
+          {contest.judges.map((judge) => (
+            <Grid item xs={12} sm={6} md={4} key={judge.userId._id}>
+              <Card 
+                elevation={2} 
+                sx={{ 
+                  borderRadius: 3,
+                  transition: 'transform 0.3s, box-shadow 0.3s',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                  }
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                  <RouterLink to={`/user/${judge.userId._id}`} style={{ textDecoration: 'none' }}>
+                    <Avatar
+                      src={judge.userId.icon}
+                      alt={judge.userId.nickname}
+                      sx={{ 
+                        width: 100, 
+                        height: 100, 
+                        margin: '0 auto', 
+                        mb: 2,
+                        border: '3px solid white',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      }}
+                    />
+                  </RouterLink>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    {judge.userId.nickname || '不明なユーザー'}
+                  </Typography>
+                  <Chip 
+                    icon={<VerifiedUserIcon />} 
+                    label="審査員" 
+                    color="success" 
+                    size="small"
+                    sx={{ fontWeight: 'bold' }}
+                  />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
     </Paper>
   </Box>
 ));
 
-const JudgesInfo = React.memo(({ judges }) => (
-  <Box mt={4}>
-    <Typography variant="h5" gutterBottom>
-      審査員
-    </Typography>
-    <Grid container spacing={2}>
-      {judges.map((judge, index) => (
-        <Grid item xs={12} sm={6} md={4} key={judge.userId._id}>
-          <Card elevation={3} sx={{ borderRadius: '8px' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <RouterLink to={`/user/${judge.userId._id}`}>
-                <Avatar
-                  src={judge.userId.icon}
-                  alt={judge.userId.nickname}
-                  sx={{ width: 80, height: 80, marginBottom: 2, margin: '0 auto' }}
-                />
-              </RouterLink>
-              <Typography variant="h6" fontWeight="bold">
-                {judge.userId.nickname || '不明なユーザー'}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      ))}
-    </Grid>
+// 応募作品一覧
+const EntriesList = React.memo(({
+  contest,
+  sortedEntries,
+  sortOrder,
+  setSortOrder,
+}) => (
+  <Box mb={4}>
+    <Paper
+      elevation={3}
+      sx={{
+        borderRadius: 3,
+        overflow: 'hidden',
+      }}
+    >
+      <Box 
+        sx={{ 
+          bgcolor: 'warning.main', 
+          p: 2, 
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <EmojiEventsIcon sx={{ mr: 1 }} />
+          <Typography variant="h6" fontWeight="bold">
+            応募作品一覧
+          </Typography>
+        </Box>
+        <Chip 
+          label={`${contest.entries.length}作品`} 
+          color="default"
+          sx={{ 
+            fontWeight: 'bold', 
+            bgcolor: 'white',
+            color: 'warning.main'
+          }} 
+        />
+      </Box>
+      
+      <Box sx={{ p: 3 }}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            mb: 3,
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight="medium">
+            応募作品を表示しています
+          </Typography>
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel>表示順</InputLabel>
+            <Select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              label="表示順"
+            >
+              <MenuItem value="latest">最新順</MenuItem>
+              <MenuItem value="oldest">古い順</MenuItem>
+              <MenuItem value="mostViewed">閲覧数が多い順</MenuItem>
+              <MenuItem value="mostLiked">いいね数が多い順</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+        
+        {contest.entries.length > 0 ? (
+          <Grid container spacing={3}>
+            {sortedEntries.map((entry) => (
+              <Grid item xs={12} sm={6} key={entry.postId._id}>
+                <Fade in={true} timeout={500}>
+                  <Box>
+                    <PostCard post={entry.postId} />
+                  </Box>
+                </Fade>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 5,
+              textAlign: 'center',
+              bgcolor: 'rgba(0,0,0,0.02)',
+              borderRadius: 2,
+              border: '1px dashed',
+              borderColor: 'divider'
+            }}
+          >
+            <EmojiEventsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              まだ応募作品がありません
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              あなたが最初の応募者になりませんか？
+            </Typography>
+          </Paper>
+        )}
+      </Box>
+    </Paper>
   </Box>
 ));
 
+// 応募モーダル
 const ApplyModal = React.memo(({
   modalOpen,
   handleCloseModal,
@@ -600,73 +1395,156 @@ const ApplyModal = React.memo(({
   handleSubmitEntry,
   handleCancelEntry,
 }) => (
-  <Modal open={modalOpen} onClose={handleCloseModal}>
-    <Box sx={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: 400,
-      bgcolor: 'background.paper',
-      boxShadow: 24,
-      p: 4,
-      borderRadius: 2,
-      maxHeight: '80vh',
-      overflowY: 'auto',
-    }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6">応募する作品を選択</Typography>
-        <IconButton onClick={handleCloseModal}>
-          <CloseIcon />
-        </IconButton>
+  <Modal 
+    open={modalOpen} 
+    onClose={handleCloseModal}
+    closeAfterTransition
+    BackdropComponent={Backdrop}
+    BackdropProps={{
+      timeout: 500,
+    }}
+  >
+    <Fade in={modalOpen}>
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: { xs: '90%', sm: 500 },
+        maxWidth: '100%',
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        borderRadius: 3,
+        overflow: 'hidden',
+        maxHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        <Box sx={{ bgcolor: 'primary.main', p: 2, color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">応募する作品を選択</Typography>
+          <IconButton onClick={handleCloseModal} sx={{ color: 'white' }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <TextField
+            placeholder="作品名を検索"
+            fullWidth
+            variant="outlined"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+            }}
+            sx={{ 
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              }
+            }}
+          />
+        </Box>
+        
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2 }}>
+          {filteredWorks.length > 0 ? (
+            <List disablePadding>
+              {filteredWorks.map((work) => {
+                const isApplied = isWorkAlreadyApplied(work._id);
+                return (
+                  <Paper
+                    key={work._id}
+                    elevation={1}
+                    sx={{ 
+                      mb: 2, 
+                      borderRadius: 2,
+                      border: isApplied ? '2px solid' : '1px solid',
+                      borderColor: isApplied ? 'primary.main' : 'divider',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <ListItem
+                      sx={{ 
+                        px: 2, 
+                        py: 1.5,
+                        bgcolor: isApplied ? alpha('#1976d2', 0.05) : 'transparent',
+                      }}
+                    >
+                      <Box sx={{ width: '100%' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
+                            {work.title}
+                          </Typography>
+                          {isApplied && (
+                            <Chip 
+                              size="small" 
+                              label="応募済み" 
+                              color="primary" 
+                              icon={<CheckCircleIcon />}
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                          )}
+                        </Box>
+                        
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            mb: 1.5,
+                          }}
+                        >
+                          {work.description || '説明なし'}
+                        </Typography>
+                        
+                        {isApplied ? (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            onClick={() => handleCancelEntry(work._id)}
+                            startIcon={<CancelIcon />}
+                            fullWidth
+                            sx={{ borderRadius: 2 }}
+                          >
+                            応募取り消し
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => handleSubmitEntry(work._id)}
+                            startIcon={<AddIcon />}
+                            fullWidth
+                            sx={{ borderRadius: 2 }}
+                          >
+                            この作品で応募する
+                          </Button>
+                        )}
+                      </Box>
+                    </ListItem>
+                  </Paper>
+                );
+              })}
+            </List>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" color="text.secondary">
+                投稿作品が見つかりません
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                新しい作品を投稿してからコンテストに応募してください
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
-      <TextField
-        placeholder="作品名を検索"
-        fullWidth
-        variant="outlined"
-        value={searchQuery}
-        onChange={(e) => handleSearch(e.target.value)}
-        sx={{ mb: 2 }}
-      />
-      {filteredWorks.length > 0 ? (
-        <List>
-          {filteredWorks.map((work) => (
-            <ListItem
-              key={work._id}
-              button
-              sx={{ border: '1px solid #ccc', borderRadius: '8px', mb: 1 }}
-            >
-              <ListItemText
-                primary={work.title}
-                secondary={work.description || '説明なし'}
-              />
-              {isWorkAlreadyApplied(work._id) ? (
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => handleCancelEntry(work._id)}
-                >
-                  応募取り消し
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleSubmitEntry(work._id)}
-                >
-                  応募
-                </Button>
-              )}
-            </ListItem>
-          ))}
-        </List>
-      ) : (
-        <Typography variant="body2">まだ投稿がありません。</Typography>
-      )}
-    </Box>
+    </Fade>
   </Modal>
 ));
 
+// 確認ダイアログ
 const ConfirmationDialog = React.memo(({
   confirmationOpen,
   setConfirmationOpen,
@@ -675,54 +1553,45 @@ const ConfirmationDialog = React.memo(({
   <Dialog
     open={confirmationOpen}
     onClose={() => setConfirmationOpen(false)}
+    PaperProps={{
+      sx: {
+        borderRadius: 3,
+        overflow: 'hidden',
+      }
+    }}
   >
-    <DialogTitle>応募取り消しの確認</DialogTitle>
-    <DialogContent>
+    <DialogTitle sx={{ bgcolor: 'error.main', color: 'white', py: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <InfoIcon sx={{ mr: 1 }} />
+        応募取り消しの確認
+      </Box>
+    </DialogTitle>
+    <DialogContent sx={{ mt: 2 }}>
       <DialogContentText>
         本当にこの作品の応募を取り消してもよろしいですか？
       </DialogContentText>
     </DialogContent>
-    <DialogActions>
-      <Button onClick={() => setConfirmationOpen(false)}>いいえ</Button>
-      <Button onClick={confirmCancelEntry} color="primary" autoFocus>
-        はい
+    <DialogActions sx={{ px: 3, pb: 3 }}>
+      <Button 
+        onClick={() => setConfirmationOpen(false)} 
+        color="inherit"
+        variant="outlined"
+        sx={{ borderRadius: 2 }}
+      >
+        キャンセル
+      </Button>
+      <Button 
+        onClick={confirmCancelEntry} 
+        color="error" 
+        variant="contained"
+        autoFocus
+        startIcon={<CancelIcon />}
+        sx={{ borderRadius: 2 }}
+      >
+        応募を取り消す
       </Button>
     </DialogActions>
   </Dialog>
-));
-
-const EntriesList = React.memo(({
-  contest,
-  sortedEntries,
-  sortOrder,
-  setSortOrder,
-}) => (
-  <Box sx={{ maxWidth: '1200px', margin: '0 auto', padding: 4 }}>
-    <Typography variant="h5" gutterBottom>応募作品一覧</Typography>
-    <FormControl sx={{ minWidth: 200, mb: 2 }}>
-      <InputLabel>ソート順</InputLabel>
-      <Select
-        value={sortOrder}
-        onChange={(e) => setSortOrder(e.target.value)}
-      >
-        <MenuItem value="latest">最新順</MenuItem>
-        <MenuItem value="oldest">古い順</MenuItem>
-        <MenuItem value="mostViewed">閲覧数が多い順</MenuItem>
-        <MenuItem value="mostLiked">いいね数が多い順</MenuItem>
-      </Select>
-    </FormControl>
-    {contest.entries.length > 0 ? (
-      <Grid container spacing={2}>
-        {sortedEntries.map((entry) => (
-          <Grid item xs={12} sm={6} key={entry.postId._id}>
-            <PostCard post={entry.postId} />
-          </Grid>
-        ))}
-      </Grid>
-    ) : (
-      <Typography variant="body1">まだ応募作品がありません。</Typography>
-    )}
-  </Box>
 ));
 
 export default ContestDetail;

@@ -331,4 +331,183 @@ router.get('/me/contests', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'コンテストの取得に失敗しました。', error });
   }
 });
+
+const statsCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5分間キャッシュを有効にする
+
+// 統計情報用キャッシュミドルウェア
+const cacheStats = (req, res, next) => {
+  const userId = req.params.userId;
+  const cacheKey = `user-stats-${userId}`;
+  
+  // キャッシュがあり、有効期限内なら使用
+  if (statsCache.has(cacheKey)) {
+    const { data, timestamp } = statsCache.get(cacheKey);
+    if (Date.now() - timestamp < CACHE_TTL) {
+      return res.json(data);
+    }
+    // 期限切れならキャッシュを削除
+    statsCache.delete(cacheKey);
+  }
+  
+  // キャッシュがなければ次のミドルウェアへ
+  // レスポンスを傍受してキャッシュに保存
+  const originalJson = res.json;
+  res.json = function(data) {
+    statsCache.set(cacheKey, {
+      data,
+      timestamp: Date.now()
+    });
+    return originalJson.call(this, data);
+  };
+  
+  next();
+
+};
+// ユーザーの統計情報を取得するエンドポイント
+router.get('/:userId([0-9a-fA-F]{24})/stats', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    // ユーザー情報を取得
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりませんでした。' });
+    }
+    
+    // ユーザーの作品を取得
+    const posts = await Post.find({ author: userId });
+    
+    // いいね数の合計を取得
+    const totalLikes = await Good.countDocuments({ targetPost: { $in: posts.map(post => post._id) } });
+    
+    // コメント数の合計を取得
+    const commentCount = posts.reduce((total, post) => total + (post.comments ? post.comments.length : 0), 0);
+    
+    // ブックマーク数（本棚追加数）の合計
+    const totalBookmarks = posts.reduce((total, post) => total + (post.bookShelfCounter || 0), 0);
+    
+    // 閲覧数の合計
+    const totalViews = posts.reduce((total, post) => total + (post.viewCounter || 0), 0);
+    
+    // AI生成作品とオリジナル作品の割合を計算
+    const aiPosts = posts.filter(post => post.aiGenerated).length;
+    const originalPosts = posts.filter(post => post.isOriginal).length;
+    
+    const aiUsagePercent = posts.length > 0 ? Math.round((aiPosts / posts.length) * 100) : 0;
+    const originalContentPercent = posts.length > 0 ? Math.round((originalPosts / posts.length) * 100) : 0;
+    
+    // R18コンテンツの数
+    const adultContentCount = posts.filter(post => post.isAdultContent).length;
+    
+    // シリーズの数を取得
+    const seriesCount = await Series.countDocuments({ author: userId });
+    
+    // タグの使用頻度を集計
+    const tagCounts = {};
+    posts.forEach(post => {
+      if (post.tags && Array.isArray(post.tags)) {
+        post.tags.forEach(tag => {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      }
+    });
+    
+    // よく使われるタグをソートして上位5つを取得
+    const topTags = Object.entries(tagCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    // 統計情報をまとめる
+    const stats = {
+      postCount: posts.length,
+      totalViews,
+      totalLikes,
+      totalBookmarks,
+      commentCount,
+      aiUsagePercent,
+      originalContentPercent,
+      adultContentCount,
+      seriesCount,
+      topTags
+    };
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ message: '統計情報の取得に失敗しました。', error: error.message });
+  }
+});
+// ユーザーデータが更新されたらキャッシュを削除するミドルウェア
+const clearUserCache = (req, res, next) => {
+  const userId = req.params.id || req.user?._id;
+  if (userId) {
+    const cacheKey = `user-stats-${userId}`;
+    statsCache.delete(cacheKey);
+  }
+  next();
+};
+// ユーザーの最近の活動を取得するエンドポイント
+router.get('/:userId([0-9a-fA-F]{24})/activity', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    // ユーザー情報を確認
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'ユーザーが見つかりませんでした。' });
+    }
+    
+    // 最近の投稿を取得（最新10件）
+    const recentPosts = await Post.find({ author: userId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('title createdAt viewCounter');
+    
+    // 最近のコメントを取得
+    const postsWithComments = await Post.find({ 'comments.userId': userId })
+      .sort({ 'comments.createdAt': -1 })
+      .limit(10)
+      .select('title comments');
+    
+    // コメントデータを整形
+    const recentComments = [];
+    postsWithComments.forEach(post => {
+      if (post.comments && Array.isArray(post.comments)) {
+        post.comments
+          .filter(comment => comment.userId && comment.userId.toString() === userId)
+          .slice(0, 5) // 各投稿から最大5件のコメントを取得
+          .forEach(comment => {
+            recentComments.push({
+              type: 'comment',
+              postTitle: post.title,
+              postId: post._id,
+              date: comment.createdAt,
+              content: comment.content
+            });
+          });
+      }
+    });
+    
+    // 投稿データを整形
+    const formattedPosts = recentPosts.map(post => ({
+      type: 'post',
+      title: post.title,
+      postId: post._id,
+      date: post.createdAt,
+      views: post.viewCounter || 0
+    }));
+    
+    // 活動データを結合してソート
+    const allActivity = [...formattedPosts, ...recentComments]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10); // 最新10件のみ返す
+    
+    res.json(allActivity);
+  } catch (error) {
+    console.error('Error fetching user activity:', error);
+    res.status(500).json({ message: '活動履歴の取得に失敗しました。', error: error.message });
+  }
+});
 module.exports = router;

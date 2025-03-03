@@ -50,12 +50,19 @@ router.get('/posts/:id([0-9a-fA-F]{24})/isInBookshelf', authenticateToken, async
     res.status(500).json({ message: '本棚登録状態の確認に失敗しました。', error });
   }
 });
-// 自分の本棚リストを取得するエンドポイント
 router.get('/me/bookshelf', authenticateToken, async (req, res) => {
   try {
     const userId = req.user._id;
-    const user = await User.findById(userId).populate('bookShelf', 'title description author');
-
+    const user = await User.findById(userId)
+      .populate({
+        path: 'bookShelf',
+        select: 'title description author series tags viewCounter goodCounter bookShelfCounter wordCount isAdultContent isAI isOriginal',
+        populate: [
+          { path: 'author' },
+          { path: 'series' }
+        ]
+      });
+      
     if (!user) {
       return res.status(404).json({ message: 'ユーザーが見つかりません。' });
     }
