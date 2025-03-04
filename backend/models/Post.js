@@ -42,7 +42,7 @@ const postSchema = new mongoose.Schema({
     required: false,
   },
   isAI: { type: Boolean, default: true, required: true  },
-  aiEvidence: { type: aiEvidenceSchema, required: true }, // AI証拠
+  aiEvidence: { type: aiEvidenceSchema }, // AI証拠
   // 表示設定
   isPublic: { type: Boolean, default: true }, // 公開/非公開設定
   allowComments: { type: Boolean, default: true }, // コメント許可/禁止設定

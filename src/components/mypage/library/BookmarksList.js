@@ -101,7 +101,7 @@ const BookmarksList = ({ bookmarks = [], onDelete }) => {
         </Typography>
         <Button 
           variant="contained" 
-          onClick={() => navigate('/novels')}
+          onClick={() => navigate('/search')}
           startIcon={<MenuBookIcon />}
           sx={{ borderRadius: 6, px: 3 }}
         >

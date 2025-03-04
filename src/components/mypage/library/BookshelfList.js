@@ -84,7 +84,7 @@ const BookshelfList = ({ bookshelf = [], onRemove }) => {
         </Typography>
         <Button 
           variant="contained" 
-          onClick={() => navigate('/discover')}
+          onClick={() => navigate('/search')}
           startIcon={<MenuBookIcon />}
           sx={{ borderRadius: 6, px: 3 }}
         >

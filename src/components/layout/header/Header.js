@@ -42,7 +42,7 @@ function HideOnScroll(props) {
   );
 }
 
-const Header = React.memo(({ auth, handleLogout }) => {
+const Header = React.memo(({ auth, handleLogout ,user}) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [elevated, setElevated] = useState(false);
   const theme = useTheme();
@@ -202,7 +202,7 @@ const Header = React.memo(({ auth, handleLogout }) => {
         <Divider sx={{ my: 1 }} />
         
         <Box sx={{ p: 2 }}>
-          <AuthButtons auth={auth} handleLogout={handleLogout} vertical />
+          <AuthButtons auth={auth} handleLogout={handleLogout} vertical user={user}/>
         </Box>
       </Drawer>
       

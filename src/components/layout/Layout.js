@@ -1,41 +1,43 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useContext, useCallback,useMemo } from "react";
 import { Box } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Footer from './footer/Footer';
 import Header from './header/Header';
 import { SearchContext } from "../../context/SearchContext";
 
-const Layout = ({ children, auth, setAuth }) => {
+const Layout = ({ children, auth = false, setAuth, user }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { searchParams, handleSearch } = useContext(SearchContext);
   const [searchQuery, setSearchQuery] = useState(searchParams.mustInclude || "");
+  const author = useMemo(() => user ? user._id : null, [user]);
 
   useEffect(() => {
     setSearchQuery(searchParams.mustInclude || "");
   }, [location.search]);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch(`/api/check-auth`, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (response.ok) {
-          setAuth(true);
-          console.error('Auth check success');
-        } else {
-          setAuth(false);
-          console.error('Auth check failed');
-        }
-      } catch (error) {
-        console.error('Auth check failed', error);
+useEffect(() => {
+  const checkAuth = async () => {
+    try {
+      const response = await fetch(`/api/check-auth`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        console.log(response)
+        setAuth(true);
+        console.error('Auth check success');
+      } else {
         setAuth(false);
+        console.error('Auth check failed');
       }
-    };
-    checkAuth();
-  }, [setAuth]);
+    } catch (error) {
+      console.error('Auth check failed', error);
+      setAuth(false);
+    }
+  };
+  checkAuth();
+}, [setAuth]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -55,7 +57,7 @@ const Layout = ({ children, auth, setAuth }) => {
 
   return (
     <div>
-      <Header auth={auth} handleLogout={handleLogout} />
+      <Header auth={auth} handleLogout={handleLogout} user={user} />
       <Box component="main" sx={{ paddingTop: 8 }}>{children}</Box>
       <Footer />
     </div>

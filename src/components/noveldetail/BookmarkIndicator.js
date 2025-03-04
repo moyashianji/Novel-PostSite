@@ -1,34 +1,47 @@
+
+// BookmarkIndicator.js
 import React, { memo } from 'react';
-import { Typography, Box } from '@mui/material';
+import { Typography, Box, Paper, Fade } from '@mui/material';
 import BookmarkButton from './BookmarkButton';
+import { styled } from '@mui/material/styles';
+
+const InstructionBox = styled(Paper)(({ theme }) => ({
+  position: 'fixed',
+  bottom: 88, // Fab button height + some spacing
+  right: 24,
+  padding: theme.spacing(2),
+  borderRadius: 12,
+  maxWidth: 240,
+  boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  backdropFilter: 'blur(5px)',
+  zIndex: 1050,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: '1px solid',
+  borderColor: theme.palette.divider,
+}));
 
 const BookmarkIndicator = memo(({ isBookmarkMode, handleBookmarkClick }) => (
-  <Box
-    sx={{
-      position: 'fixed',
-      bottom: 20,
-      right: 70,
-      display: 'flex',
-      alignItems: 'center',
-      zIndex: 1000,
-    }}
-  >
+  <>
     <BookmarkButton onClick={handleBookmarkClick} />
-    {isBookmarkMode && (
-      <Typography
-        variant="body2"
-        sx={{
-          marginLeft: 2,
-          backgroundColor: 'white',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          boxShadow: '0 0 10px rgba(0, 0, 0, 0.2)',
-        }}
-      >
-        次読み始めたい文をクリックしてください
-      </Typography>
-    )}
-  </Box>
+    
+    <Fade in={isBookmarkMode}>
+      <InstructionBox>
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 500,
+            textAlign: 'center',
+            color: 'text.primary',
+          }}
+        >
+          次に読み始めたい段落をクリックしてください
+        </Typography>
+      </InstructionBox>
+    </Fade>
+  </>
 ));
 
 export default BookmarkIndicator;

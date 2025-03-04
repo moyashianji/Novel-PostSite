@@ -147,6 +147,10 @@ const SearchBar = () => {
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  
   const searchBoxRef = useRef(null);
   const inputRef = useRef(null);
   const navigate = useNavigate();
@@ -163,6 +167,25 @@ const SearchBar = () => {
         console.error('Failed to parse recent searches from localStorage');
       }
     }
+    const fetchTags = async () => {
+        setLoading(true);
+        try {
+          const response = await fetch(`/api/tags/popular`);
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          const data = await response.json();
+          setTags(data);
+          setError(false);
+        } catch (error) {
+          console.error('❌ Elasticsearch から人気タグ取得エラー:', error);
+          setError(true);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchTags();
   }, []);
 
   // Save recent search to localStorage
@@ -219,7 +242,7 @@ const SearchBar = () => {
     setSearchQuery(query);
     handleSearch({ mustInclude: query });
     saveRecentSearch(query);
-    navigate(`/search?mustInclude=${encodeURIComponent(query)}`);
+    navigate(`/search?mustInclude=${encodeURIComponent(query)}`, { replace: true });
     setShowSuggestions(false);
   }, [handleSearch, navigate, saveRecentSearch]);
 
@@ -262,16 +285,7 @@ const SearchBar = () => {
               <CloseIcon fontSize="small" />
             </ClearButton>
           )}
-          
-          {!isMobile && (
-            <IconButton
-              color="primary"
-              sx={{ mr: 1 }}
-              aria-label="advanced search"
-            >
-              <TuneIcon />
-            </IconButton>
-          )}
+
         </SearchBox>
         
         {!isMobile && (
@@ -328,7 +342,7 @@ const SearchBar = () => {
                         >
                           <HistoryIcon fontSize="small" sx={{ mr: 1.5, color: 'text.secondary', fontSize: 18 }} />
                           <ListItemText 
-                            primary={search}
+                            primary={search ? search.toString() : ''}
                             primaryTypographyProps={{ variant: 'body2' }}
                           />
                         </ListItem>
@@ -346,13 +360,13 @@ const SearchBar = () => {
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
-                    {TRENDING_SEARCHES.map((search, index) => (
+                    {tags.map((tag, index) => (
                       <TrendingChip
                         key={`trend-${index}`}
-                        label={search}
+                        label={tag.tag ? tag.tag.toString() : ''}
                         index={index}
                         clickable
-                        onClick={() => handleSuggestionClick(search)}
+                        onClick={() => handleSuggestionClick(tag.tag)}
                         icon={index === 0 ? <FireIcon /> : undefined}
                       />
                     ))}

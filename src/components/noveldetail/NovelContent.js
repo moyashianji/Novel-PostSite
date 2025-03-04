@@ -1,11 +1,41 @@
+
+// NovelContent.js
 import React, { memo } from 'react';
-import { Typography, Box } from '@mui/material';
+import { Typography, Box, Container, Paper, Divider } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import Statistics from './Statistics';
 import Tags from './Tags';
 import AutoScroll from './AutoScroll';
 import Content from './Content';
 import BookmarkIndicator from './BookmarkIndicator';
 import ActionButtons from './ActionButtons';
+
+const NovelHeaderContainer = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(4),
+}));
+
+const NovelTitle = styled(Typography)(({ theme }) => ({
+  fontWeight: 700,
+  fontSize: '2rem',
+  lineHeight: 1.3,
+  marginBottom: theme.spacing(2),
+  color: theme.palette.text.primary,
+}));
+
+const NovelDescription = styled(Typography)(({ theme }) => ({
+  fontSize: '1.1rem',
+  lineHeight: 1.6,
+  color: theme.palette.text.secondary,
+  marginBottom: theme.spacing(3),
+}));
+
+const NovelContainer = styled(Container)(({ theme }) => ({
+  maxWidth: '800px',
+  padding: theme.spacing(3),
+  [theme.breakpoints.up('md')]: {
+    padding: theme.spacing(5),
+  },
+}));
 
 const NovelContent = memo(({
   post,
@@ -24,35 +54,56 @@ const NovelContent = memo(({
   isInBookshelf,
   postDate
 }) => (
-  <>
-    <Typography variant="h4" gutterBottom>
-      {post.title}
-    </Typography>
-    <Typography variant="body1" color="textSecondary" gutterBottom>
-      {post.description}
-    </Typography>
-    <Statistics
-      viewCount={viewCount}
-      goodCount={goodCount}
-      bookshelfCount={bookshelfCount}
-      postDate={postDate}
-    />
-    <Tags tags={post.tags} handleTagClick={handleTagClick} />
-    <Box sx={{ height: '16px' }} />
+  <NovelContainer>
+    <NovelHeaderContainer>
+      <NovelTitle variant="h4">
+        {post.title}
+      </NovelTitle>
+      <NovelDescription variant="body1">
+        {post.description}
+      </NovelDescription>
+      
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: 2, 
+          borderRadius: 2, 
+          backgroundColor: 'rgba(0, 0, 0, 0.02)',
+          border: '1px solid',
+          borderColor: 'divider',
+          mb: 3
+        }}
+      >
+        <Statistics
+          viewCount={viewCount}
+          goodCount={goodCount}
+          bookshelfCount={bookshelfCount}
+          postDate={postDate}
+        />
+      </Paper>
+      
+      <Tags tags={post.tags} handleTagClick={handleTagClick} />
+    </NovelHeaderContainer>
+    
+    <Divider sx={{ my: 4 }} />
+    
     <AutoScroll scrollSpeed={scrollSpeed} setScrollSpeed={setScrollSpeed} />
+    
     <Content
       content={post.content}
       isBookmarkMode={isBookmarkMode}
       handleTextClick={handleTextClick}
     />
+    
     <BookmarkIndicator isBookmarkMode={isBookmarkMode} handleBookmarkClick={handleBookmarkClick} />
+    
     <ActionButtons
       hasLiked={hasLiked}
       isInBookshelf={isInBookshelf}
       handleGoodClick={handleGoodClick}
       handleBookshelfClick={handleBookshelfClick}
     />
-  </>
+  </NovelContainer>
 ));
 
 export default NovelContent;

@@ -31,20 +31,20 @@ const theme = createTheme();
 function App() {
   const [auth, setAuth] = useState(false);
   const [user, setUser] = useState(null);
-  const API_URL = process.env.REACT_APP_API_URL;
 
   // パラメータで受け取ったトークンを使って、パスワードリセットリクエストをサーバーに送信
   useEffect(() => {
 
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/user/me`, {
+        const response = await fetch(`/api/user/me`, {
           credentials: 'include',  // セッションを含めてリクエストを送信
         });
 
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
+          console.log(userData)
         } else {
           console.error('Failed to fetch user data');
           setAuth(false);
@@ -64,7 +64,7 @@ function App() {
       <Router>
       <SearchProvider> {/* ✅ 検索プロバイダーで全体をラップ */}
 
-        <Layout auth={auth} setAuth={setAuth}>
+        <Layout auth={auth} setAuth={setAuth} user={user}>
           <Routes>
             <Route path="/" element={<Home auth={auth} />} />
             <Route path="/search" element={<SearchPage />} />

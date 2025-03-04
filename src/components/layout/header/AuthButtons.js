@@ -36,6 +36,8 @@ const PrimaryButton = styled(Button)(({ theme }) => ({
   fontWeight: 'bold',
   textTransform: 'none',
   boxShadow: 'none',
+  whiteSpace: 'nowrap',
+  minWidth: 'auto',
   '&:hover': {
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
     transform: 'translateY(-1px)',
@@ -49,6 +51,9 @@ const SecondaryButton = styled(Button)(({ theme }) => ({
   paddingRight: theme.spacing(2),
   textTransform: 'none',
   borderColor: 'rgba(255, 255, 255, 0.7)',
+  whiteSpace: 'nowrap',
+
+  minWidth: 'auto',
   '&:hover': {
     borderColor: 'rgba(255, 255, 255, 1)',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -76,7 +81,7 @@ const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
   },
 }));
 
-const AuthButtons = React.memo(({ auth, handleLogout, vertical = false }) => {
+const AuthButtons = React.memo(({ auth, handleLogout, vertical = false ,user}) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -102,12 +107,7 @@ const AuthButtons = React.memo(({ auth, handleLogout, vertical = false }) => {
     navigate(path);
   };
   
-  // Mock user data (in a real app, this would come from auth context/state)
-  const user = auth ? {
-    name: 'ユーザー名',
-    avatar: '/user-avatar.jpg', // replace with actual user avatar
-    role: '作家'
-  } : null;
+
   
   // For vertical layout (used in mobile drawer)
   if (vertical) {
@@ -116,10 +116,10 @@ const AuthButtons = React.memo(({ auth, handleLogout, vertical = false }) => {
         {auth ? (
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', px: 2, py: 1 }}>
-              <UserAvatar src={user?.avatar} alt={user?.name} />
+              <UserAvatar src={user?.icon} alt={user?.nickname} />
               <Box sx={{ ml: 1.5 }}>
                 <Typography variant="subtitle1" fontWeight="bold">
-                  {user?.name}
+                  {user?.nickname}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {user?.role}
